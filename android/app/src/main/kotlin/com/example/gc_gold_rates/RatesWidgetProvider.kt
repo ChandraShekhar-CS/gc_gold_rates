@@ -26,8 +26,8 @@ class RatesWidgetProvider : AppWidgetProvider() {
 
     companion object {
         const val ACTION_UPDATE_WIDGET = "com.yourcompany.rateswidget.ACTION_UPDATE_WIDGET"
-        // 5 minutes in milliseconds
-        private const val REFRESH_INTERVAL = 5 * 60 * 1000L
+        // 1 minute in milliseconds (was 5 * 60 * 1000L)
+        private const val REFRESH_INTERVAL = 1 * 60 * 1000L
     }
 
     override fun onUpdate(
@@ -50,19 +50,22 @@ class RatesWidgetProvider : AppWidgetProvider() {
             for (widgetId in appWidgetIds) {
                 updateAppWidget(context, appWidgetManager, widgetId, isRefreshAction = true)
             }
+            // Re-schedule the next update after a manual refresh
             scheduleNextUpdate(context)
         }
     }
 
     override fun onEnabled(context: Context) {
         super.onEnabled(context)
+        // Schedule the first update when the widget is enabled
         scheduleNextUpdate(context)
     }
 
     override fun onDisabled(context: Context) {
         super.onDisabled(context)
+        // Cancel all scheduled updates when the widget is disabled
         cancelScheduledUpdates(context)
-        job.cancel() // Cancel the coroutine scope
+        job.cancel() // Cancel the coroutine scope to prevent leaks
     }
 
     private fun updateAppWidget(
@@ -76,10 +79,15 @@ class RatesWidgetProvider : AppWidgetProvider() {
         // Set up the refresh button click intent
         views.setOnClickPendingIntent(R.id.refresh_button, getRefreshPendingIntent(context))
 
-        // Show loading indicator if it's a manual refresh
+        // Show loading indicator and animation if it's a manual refresh or initial load
         if (isRefreshAction) {
             views.setViewVisibility(R.id.refresh_button, View.GONE)
-            views.setViewVisibility(R.id.refresh_progress, View.VISIBLE)
+            views.setViewVisibility(R.id.refresh_progress_image, View.VISIBLE) // Use ImageView for animation
+            appWidgetManager.updateAppWidget(appWidgetId, views)
+        } else {
+            // For periodic updates, ensure progress is hidden and button is visible initially
+            views.setViewVisibility(R.id.refresh_button, View.VISIBLE)
+            views.setViewVisibility(R.id.refresh_progress_image, View.GONE) // Use ImageView for animation
             appWidgetManager.updateAppWidget(appWidgetId, views)
         }
 
@@ -100,6 +108,7 @@ class RatesWidgetProvider : AppWidgetProvider() {
         // Switch to the Main thread to update the UI
         withContext(Dispatchers.Main) {
             val views = RemoteViews(context.packageName, R.layout.rates_widget_layout)
+            // Re-attach the click listener in case the RemoteViews was re-created
             views.setOnClickPendingIntent(R.id.refresh_button, getRefreshPendingIntent(context))
 
             when (result) {
@@ -111,17 +120,21 @@ class RatesWidgetProvider : AppWidgetProvider() {
                     views.setTextViewText(R.id.gold_rate, formattedGoldRate)
                     views.setTextViewText(R.id.silver_rate, formattedSilverRate)
                     views.setTextViewText(R.id.rates_updated_time, currentTime)
+
+                    // Removed setAnimation calls as RemoteViews do not support it directly
                 }
                 is RatesRepository.Result.Error -> {
                     views.setTextViewText(R.id.gold_rate, "₹ --")
                     views.setTextViewText(R.id.silver_rate, "₹ --")
-                    // Optionally show an error message
+                    // Log the error for debugging, or show a more prominent message to the user
+                    println("Error fetching rates: ${result.errorMessage}")
                 }
             }
 
-            // Hide progress and show refresh button
+            // Hide progress animation and show refresh button
+            views.setViewVisibility(R.id.refresh_progress_image, View.GONE) // Use ImageView for animation
             views.setViewVisibility(R.id.refresh_button, View.VISIBLE)
-            views.setViewVisibility(R.id.refresh_progress, View.GONE)
+
 
             // Update the widget
             appWidgetManager.updateAppWidget(appWidgetId, views)
@@ -149,10 +162,11 @@ class RatesWidgetProvider : AppWidgetProvider() {
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !alarmManager.canScheduleExactAlarms()) {
              // For Android 12+ where exact alarms permission might not be granted
-             // Fallback to inexact alarm
+             // Fallback to inexact alarm if exact alarms are not permitted
             alarmManager.set(AlarmManager.RTC, triggerAtMillis, pendingIntent)
         } else {
             // This works for all versions if permission is granted, and for older versions.
+            // setExactAndAllowWhileIdle is crucial for reliable updates even in Doze mode
             alarmManager.setExactAndAllowWhileIdle(
                 AlarmManager.RTC_WAKEUP,
                 triggerAtMillis,
