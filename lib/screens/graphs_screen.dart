@@ -328,8 +328,9 @@ class _GraphsScreenState extends State<GraphsScreen> {
             interval: (spots.length / 4).ceilToDouble(), // Show ~4 labels
             getTitlesWidget: (value, meta) {
               final index = value.toInt();
-              if (index < 0 || index >= _apiResponse!.data.length)
+              if (index < 0 || index >= _apiResponse!.data.length) {
                 return const SizedBox();
+              }
 
               final date = _apiResponse!.data[index].createdAt;
               String label = (_selectedTimeRange == TimeRange.day)
@@ -337,7 +338,7 @@ class _GraphsScreenState extends State<GraphsScreen> {
                   : DateFormat('dd/MM').format(date);
 
               return SideTitleWidget(
-                axisSide: meta.axisSide,
+                meta: meta, // This is the newly added required parameter
                 child: Text(label, style: const TextStyle(fontSize: 10)),
               );
             },

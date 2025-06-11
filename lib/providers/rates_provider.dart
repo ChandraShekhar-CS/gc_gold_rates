@@ -44,7 +44,7 @@ class RatesProvider with ChangeNotifier {
     {'title': 'USD / INR', 'uniqueId': 4, 'apiSymbol': 'dollarinr'},
     {'title': 'Gold / USD', 'uniqueId': 5, 'apiSymbol': 'golddollar'},
     {'title': 'Silver / USD', 'uniqueId': 6, 'apiSymbol': 'silverdollar'},
-    {'title': 'Gold / Refiner', 'uniqueId': 7, 'apiSymbol': 'goldrefine'},
+    {'title': 'Gold / Refine', 'uniqueId': 7, 'apiSymbol': 'goldrefine'},
     {'title': 'Gold / RTGS', 'uniqueId': 8, 'apiSymbol': 'goldrtgs'},
     // Add other cards as needed, matching the symbols from the live API response
   ];
@@ -176,7 +176,7 @@ class RatesProvider with ChangeNotifier {
   /// Starts a periodic timer to auto-refresh rates.
   void startAutoRefresh() {
     _timer?.cancel();
-    _timer = Timer.periodic(const Duration(seconds: 5), (timer) {
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       fetchRates();
     });
   }
