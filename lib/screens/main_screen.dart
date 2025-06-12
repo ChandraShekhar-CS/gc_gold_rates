@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/rates_provider.dart';
-import '../widgets/rate_card_widget.dart';
+import '../widgets/rate_card.dart';
 import 'graphs_screen.dart';
 
 class MainScreen extends StatelessWidget {
