@@ -42,7 +42,6 @@
             android:layout_height="22dp"
             android:background="@android:color/transparent"
             android:src="@drawable/ic_refresh" />
-
         <!-- Changed from ProgressBar to ImageView to support animated-rotate drawable -->
         <ImageView
             android:id="@+id/refresh_progress_image"
@@ -50,7 +49,6 @@
             android:layout_height="22dp"
             android:visibility="gone"
             android:src="@drawable/rotating_refresh" />
-
         <!-- Keep ProgressBar for backward compatibility or if a standard ProgressBar is needed for
         other cases -->
         <ProgressBar
