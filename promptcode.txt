@@ -18,11 +18,8 @@ $FilePaths = @(
 "C:\MyData\Flutter\flutter_application_1\android\app\src\main\res\xml\rates_widget_info.xml"
 "C:\MyData\Flutter\flutter_application_1\android\app\src\profile\AndroidManifest.xml"
 )
-
 $OutputFilePath = "C:\MyData\Flutter\flutter_application_1\prompt.txt"
-
 $OutputContent = ""
-
 foreach ($FilePath in $FilePaths) {
     if (Test-Path -Path $FilePath -PathType Leaf) {
         $AbsolutePath = (Resolve-Path $FilePath).Path
@@ -35,7 +32,5 @@ foreach ($FilePath in $FilePaths) {
         Write-Warning "File not found: $FilePath"
     }
 }
-
 Set-Content -Path $OutputFilePath -Value $OutputContent
-
 Write-Output "Successfully processed files to: $OutputFilePath"

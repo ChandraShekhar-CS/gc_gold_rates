@@ -1,5 +1,3 @@
-// lib/main.dart
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'providers/rates_provider.dart';
@@ -12,7 +10,6 @@ void main() {
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
-
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
@@ -25,10 +22,7 @@ class MyApp extends StatelessWidget {
         ),
         debugShowCheckedModeBanner: false,
         home: const MainScreen(),
-        // Define the route for the graphs screen for navigation
-        routes: {
-          '/graphs': (context) => const GraphsScreen(),
-        },
+        routes: {'/graphs': (context) => const GraphsScreen()},
       ),
     );
   }

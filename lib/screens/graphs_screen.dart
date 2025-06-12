@@ -1,5 +1,3 @@
-// lib/screens/graphs_screen.dart
-
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -9,7 +7,6 @@ import '../services/api_service.dart';
 class GraphsScreen extends StatefulWidget {
   final int initialSeriesIndex;
   const GraphsScreen({super.key, this.initialSeriesIndex = 0});
-
   @override
   State<GraphsScreen> createState() => _GraphsScreenState();
 }
@@ -20,16 +17,12 @@ class _GraphsScreenState extends State<GraphsScreen> {
   bool _isLoading = true;
   String? _error;
   ApiResponse? _apiResponse;
-
   late String _selectedSeries;
   bool _isBuySelected = true;
   TimeRange _selectedTimeRange = TimeRange.day;
   DateTime? _customStartDate;
   DateTime? _customEndDate;
-
   final ApiService _apiService = ApiService();
-
-  // Series options, matching the API paths
   final List<String> _seriesOptions = const [
     "gold",
     "silver",
@@ -41,7 +34,6 @@ class _GraphsScreenState extends State<GraphsScreen> {
     "goldrefine",
     "goldrtgs",
   ];
-
   @override
   void initState() {
     super.initState();
@@ -54,10 +46,8 @@ class _GraphsScreenState extends State<GraphsScreen> {
       _isLoading = true;
       _error = null;
     });
-
     try {
       final queryParams = _buildApiQuery();
-      // Pass the selected series and the query parameters separately
       final data = await _apiService.fetchGraphData(
         _selectedSeries,
         queryParams,
@@ -77,7 +67,6 @@ class _GraphsScreenState extends State<GraphsScreen> {
   String _buildApiQuery() {
     final sdf = DateFormat('yyyy-MM-dd');
     String startDate, endDate, resolution;
-
     if (_selectedTimeRange == TimeRange.custom &&
         _customStartDate != null &&
         _customEndDate != null) {
@@ -88,7 +77,6 @@ class _GraphsScreenState extends State<GraphsScreen> {
       final now = DateTime.now();
       endDate = sdf.format(now);
       DateTime startDateTime;
-
       switch (_selectedTimeRange) {
         case TimeRange.day:
           startDateTime = now.subtract(const Duration(days: 1));
@@ -106,7 +94,7 @@ class _GraphsScreenState extends State<GraphsScreen> {
           startDateTime = now.subtract(const Duration(days: 365));
           resolution = 'week';
           break;
-        case TimeRange.custom: // Fallback
+        case TimeRange.custom:
           startDateTime = now.subtract(const Duration(days: 7));
           resolution = 'hour';
           break;
@@ -115,8 +103,6 @@ class _GraphsScreenState extends State<GraphsScreen> {
     }
     return '?startDate=$startDate&endDate=$endDate&resolution=$resolution';
   }
-
-  // --- UI WIDGETS ---
 
   @override
   Widget build(BuildContext context) {
@@ -167,7 +153,6 @@ class _GraphsScreenState extends State<GraphsScreen> {
         isSelected: [_isBuySelected, !_isBuySelected],
         onPressed: (index) {
           setState(() => _isBuySelected = index == 0);
-          // No need to fetch data again, just rebuilds the chart
         },
         borderRadius: BorderRadius.circular(8),
         constraints: const BoxConstraints(minHeight: 40.0, minWidth: 100.0),
@@ -216,7 +201,6 @@ class _GraphsScreenState extends State<GraphsScreen> {
       lastDate: now,
     );
     if (pickedStartDate == null) return;
-
     final pickedEndDate = await showDatePicker(
       context: context,
       initialDate: _customEndDate ?? now,
@@ -224,7 +208,6 @@ class _GraphsScreenState extends State<GraphsScreen> {
       lastDate: now,
     );
     if (pickedEndDate == null) return;
-
     setState(() {
       _selectedTimeRange = TimeRange.custom;
       _customStartDate = pickedStartDate;
@@ -235,7 +218,6 @@ class _GraphsScreenState extends State<GraphsScreen> {
 
   Widget _buildHighLowDisplay() {
     if (_apiResponse?.stats == null) return const SizedBox.shrink();
-
     final stats = _apiResponse!.stats!;
     final price = _isBuySelected ? stats.buy : stats.sell;
     final formatter = NumberFormat.currency(
@@ -243,7 +225,6 @@ class _GraphsScreenState extends State<GraphsScreen> {
       symbol: '₹ ',
       decimalDigits: 2,
     );
-
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceAround,
       children: [
@@ -280,15 +261,12 @@ class _GraphsScreenState extends State<GraphsScreen> {
   LineChartData _buildChartData() {
     List<FlSpot> spots = [];
     if (_apiResponse == null) return LineChartData();
-
     for (var i = 0; i < _apiResponse!.data.length; i++) {
       final dataItem = _apiResponse!.data[i];
       final value = _isBuySelected ? dataItem.buy : dataItem.sell;
       spots.add(FlSpot(i.toDouble(), value));
     }
-
     if (spots.isEmpty) return LineChartData();
-
     return LineChartData(
       lineBarsData: [
         LineChartBarData(
@@ -325,20 +303,18 @@ class _GraphsScreenState extends State<GraphsScreen> {
           sideTitles: SideTitles(
             showTitles: true,
             reservedSize: 30,
-            interval: (spots.length / 4).ceilToDouble(), // Show ~4 labels
+            interval: (spots.length / 4).ceilToDouble(),
             getTitlesWidget: (value, meta) {
               final index = value.toInt();
               if (index < 0 || index >= _apiResponse!.data.length) {
                 return const SizedBox();
               }
-
               final date = _apiResponse!.data[index].createdAt;
               String label = (_selectedTimeRange == TimeRange.day)
-                  ? DateFormat.jm().format(date) // HH:mm
+                  ? DateFormat.jm().format(date)
                   : DateFormat('dd/MM').format(date);
-
               return SideTitleWidget(
-                meta: meta, // This is the newly added required parameter
+                meta: meta,
                 child: Text(label, style: const TextStyle(fontSize: 10)),
               );
             },
@@ -349,17 +325,10 @@ class _GraphsScreenState extends State<GraphsScreen> {
   }
 }
 
-// --- DATA MODELS ---
-
-// NOTE: The API response for graph data is different from the live data.
-// It contains a top-level `stats` object and a `data` array for the specific series requested.
-
 class ApiResponse {
   final List<DataItem> data;
   final Stats? stats;
-
   ApiResponse({required this.data, this.stats});
-
   factory ApiResponse.fromJson(Map<String, dynamic> json) {
     return ApiResponse(
       data: (json['data'] as List<dynamic>)
@@ -376,9 +345,7 @@ class DataItem {
   final double buy;
   final double sell;
   final DateTime createdAt;
-
   DataItem({required this.buy, required this.sell, required this.createdAt});
-
   factory DataItem.fromJson(Map<String, dynamic> json) {
     return DataItem(
       buy: (json['buy'] as num).toDouble(),
@@ -391,9 +358,7 @@ class DataItem {
 class Stats {
   final Price buy;
   final Price sell;
-
   Stats({required this.buy, required this.sell});
-
   factory Stats.fromJson(Map<String, dynamic> json) {
     return Stats(
       buy: Price.fromJson(json['buy']),
@@ -405,9 +370,7 @@ class Stats {
 class Price {
   final double high;
   final double low;
-
   Price({required this.high, required this.low});
-
   factory Price.fromJson(Map<String, dynamic> json) {
     return Price(
       high: (json['high'] as num).toDouble(),

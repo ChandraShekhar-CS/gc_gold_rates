@@ -90,7 +90,7 @@ class RatesWidgetProvider : AppWidgetProvider() {
                     val formattedGoldRate = "₹ ${result.data.gold995Sell}"
                     val formattedSilverRate = "₹ ${result.data.silverFutureSell}"
                     val currentTime =
-                            SimpleDateFormat("hh:mm a", Locale.getDefault()).format(Date())
+                            SimpleDateFormat("hh:mm:ss a", Locale.getDefault()).format(Date())
                     views.setTextViewText(R.id.gold_rate, formattedGoldRate)
                     views.setTextViewText(R.id.silver_rate, formattedSilverRate)
                     views.setTextViewText(R.id.rates_updated_time, currentTime)

@@ -1,4 +1,3 @@
-// lib/widgets/rate_card_widget.dart
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/rate_card.dart';
@@ -6,18 +5,16 @@ import '../models/rate_card.dart';
 class RateCardWidget extends StatelessWidget {
   final RateCard card;
   const RateCardWidget({super.key, required this.card});
-
   @override
   Widget build(BuildContext context) {
-    // Number formatters
-    final currencyFormatter =
-        NumberFormat.currency(locale: 'en_IN', symbol: '₹ ', decimalDigits: 2);
+    final currencyFormatter = NumberFormat.currency(
+      locale: 'en_IN',
+      symbol: '₹ ',
+      decimalDigits: 2,
+    );
     final changeFormatter = NumberFormat("+#;-#", "en_IN");
-
     final textTheme = Theme.of(context).textTheme;
     final colorScheme = Theme.of(context).colorScheme;
-
-    // --- BUY Rate Logic ---
     final double currentBuy = double.tryParse(card.buyRate ?? "0") ?? 0;
     final double prevBuy = double.tryParse(card.previousBuyRate ?? "0") ?? 0;
     final double buyChange = currentBuy - prevBuy;
@@ -27,8 +24,6 @@ class RateCardWidget extends StatelessWidget {
     final IconData buyIcon = buyChange == 0
         ? Icons.remove
         : (buyChange > 0 ? Icons.arrow_upward : Icons.arrow_downward);
-
-    // --- SELL Rate Logic ---
     final double currentSell = double.tryParse(card.sellRate ?? "0") ?? 0;
     final double prevSell = double.tryParse(card.previousSellRate ?? "0") ?? 0;
     final double sellChange = currentSell - prevSell;
@@ -38,8 +33,6 @@ class RateCardWidget extends StatelessWidget {
     final IconData sellIcon = sellChange == 0
         ? Icons.remove
         : (sellChange > 0 ? Icons.arrow_upward : Icons.arrow_downward);
-
-
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
       elevation: 3,
@@ -51,7 +44,6 @@ class RateCardWidget extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // --- TITLE BAR ---
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             color: colorScheme.secondaryContainer.withOpacity(0.4),
@@ -64,8 +56,6 @@ class RateCardWidget extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
           ),
-
-          // --- MAIN RATES (BUY/SELL) ---
           IntrinsicHeight(
             child: Row(
               children: [
@@ -81,7 +71,12 @@ class RateCardWidget extends StatelessWidget {
                     textTheme,
                   ),
                 ),
-                const VerticalDivider(width: 1, thickness: 1, indent: 10, endIndent: 10),
+                const VerticalDivider(
+                  width: 1,
+                  thickness: 1,
+                  indent: 10,
+                  endIndent: 10,
+                ),
                 Expanded(
                   child: _buildRateColumn(
                     'SELL',
@@ -98,17 +93,28 @@ class RateCardWidget extends StatelessWidget {
             ),
           ),
           const Divider(height: 1, thickness: 1),
-
-          // --- HIGH & LOW STATS ---
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16.0,
+              vertical: 10.0,
+            ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 _buildHighLowStat(
-                    'Low', card.low, currencyFormatter, textTheme, Colors.red.shade800),
+                  'Low',
+                  card.low,
+                  currencyFormatter,
+                  textTheme,
+                  Colors.red.shade800,
+                ),
                 _buildHighLowStat(
-                    'High', card.high, currencyFormatter, textTheme, Colors.green.shade800),
+                  'High',
+                  card.high,
+                  currencyFormatter,
+                  textTheme,
+                  Colors.green.shade800,
+                ),
               ],
             ),
           ),
@@ -117,7 +123,6 @@ class RateCardWidget extends StatelessWidget {
     );
   }
 
-  // Helper widget for BUY/SELL columns, now with change value
   Widget _buildRateColumn(
     String label,
     String rate,
@@ -133,11 +138,11 @@ class RateCardWidget extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Rate Title (e.g., BUY)
-          Text(label, style: textTheme.bodyMedium?.copyWith(color: Colors.black54)),
+          Text(
+            label,
+            style: textTheme.bodyMedium?.copyWith(color: Colors.black54),
+          ),
           const SizedBox(height: 8),
-
-          // Main rate value
           Text(
             currencyFormatter.format(double.tryParse(rate) ?? 0),
             style: textTheme.headlineSmall?.copyWith(
@@ -146,8 +151,6 @@ class RateCardWidget extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 4),
-
-          // Change indicator (Icon + Numeric Value)
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -155,18 +158,25 @@ class RateCardWidget extends StatelessWidget {
               const SizedBox(width: 4),
               Text(
                 changeFormatter.format(change),
-                style: textTheme.bodyMedium?.copyWith(color: color, fontWeight: FontWeight.bold),
+                style: textTheme.bodyMedium?.copyWith(
+                  color: color,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ],
-          )
+          ),
         ],
       ),
     );
   }
 
-  // Helper widget for HIGH/LOW info
-  Widget _buildHighLowStat(String label, String value, NumberFormat formatter,
-      TextTheme textTheme, Color color) {
+  Widget _buildHighLowStat(
+    String label,
+    String value,
+    NumberFormat formatter,
+    TextTheme textTheme,
+    Color color,
+  ) {
     return RichText(
       text: TextSpan(
         style: textTheme.bodyMedium?.copyWith(color: Colors.grey.shade700),
