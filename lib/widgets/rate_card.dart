@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../models/rate_card.dart';
+import '../models/rate_card.dart' as model;
+import '../screens/graphs_screen.dart';
 
 class RateCardWidget extends StatelessWidget {
-  final RateCard card;
+  final model.RateCard card;
   const RateCardWidget({super.key, required this.card});
   @override
   Widget build(BuildContext context) {
@@ -15,8 +16,8 @@ class RateCardWidget extends StatelessWidget {
     final changeFormatter = NumberFormat("+#;-#", "en_IN");
     final textTheme = Theme.of(context).textTheme;
     final colorScheme = Theme.of(context).colorScheme;
-    final double currentBuy = double.tryParse(card.buyRate ?? "0") ?? 0;
-    final double prevBuy = double.tryParse(card.previousBuyRate ?? "0") ?? 0;
+    final double currentBuy = double.tryParse(card.buyRate) ?? 0;
+    final double prevBuy = double.tryParse(card.previousBuyRate) ?? 0;
     final double buyChange = currentBuy - prevBuy;
     final Color buyColor = buyChange == 0
         ? Colors.grey.shade700
@@ -24,8 +25,8 @@ class RateCardWidget extends StatelessWidget {
     final IconData buyIcon = buyChange == 0
         ? Icons.remove
         : (buyChange > 0 ? Icons.arrow_upward : Icons.arrow_downward);
-    final double currentSell = double.tryParse(card.sellRate ?? "0") ?? 0;
-    final double prevSell = double.tryParse(card.previousSellRate ?? "0") ?? 0;
+    final double currentSell = double.tryParse(card.sellRate) ?? 0;
+    final double prevSell = double.tryParse(card.previousSellRate) ?? 0;
     final double sellChange = currentSell - prevSell;
     final Color sellColor = sellChange == 0
         ? Colors.grey.shade700
@@ -41,84 +42,94 @@ class RateCardWidget extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(color: Colors.grey.shade300, width: 1),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            color: colorScheme.secondaryContainer.withOpacity(0.4),
-            child: Text(
-              card.title,
-              style: textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: colorScheme.onSecondaryContainer,
+      child: InkWell(
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) =>
+                  GraphsScreen(initialSeriesSymbol: card.apiSymbol),
+            ),
+          );
+        },
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              color: colorScheme.secondaryContainer.withOpacity(0.4),
+              child: Text(
+                card.title,
+                style: textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: colorScheme.onSecondaryContainer,
+                ),
+                textAlign: TextAlign.center,
               ),
-              textAlign: TextAlign.center,
             ),
-          ),
-          IntrinsicHeight(
-            child: Row(
-              children: [
-                Expanded(
-                  child: _buildRateColumn(
-                    'BUY',
-                    card.buyRate,
-                    buyChange,
-                    buyColor,
-                    buyIcon,
-                    currencyFormatter,
-                    changeFormatter,
-                    textTheme,
+            IntrinsicHeight(
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _buildRateColumn(
+                      'BUY',
+                      card.buyRate,
+                      buyChange,
+                      buyColor,
+                      buyIcon,
+                      currencyFormatter,
+                      changeFormatter,
+                      textTheme,
+                    ),
                   ),
-                ),
-                const VerticalDivider(
-                  width: 1,
-                  thickness: 1,
-                  indent: 10,
-                  endIndent: 10,
-                ),
-                Expanded(
-                  child: _buildRateColumn(
-                    'SELL',
-                    card.sellRate,
-                    sellChange,
-                    sellColor,
-                    sellIcon,
-                    currencyFormatter,
-                    changeFormatter,
-                    textTheme,
+                  const VerticalDivider(
+                    width: 1,
+                    thickness: 1,
+                    indent: 10,
+                    endIndent: 10,
                   ),
-                ),
-              ],
+                  Expanded(
+                    child: _buildRateColumn(
+                      'SELL',
+                      card.sellRate,
+                      sellChange,
+                      sellColor,
+                      sellIcon,
+                      currencyFormatter,
+                      changeFormatter,
+                      textTheme,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          const Divider(height: 1, thickness: 1),
-          Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 16.0,
-              vertical: 10.0,
+            const Divider(height: 1, thickness: 1),
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16.0,
+                vertical: 10.0,
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _buildHighLowStat(
+                    'Low',
+                    card.low,
+                    currencyFormatter,
+                    textTheme,
+                    Colors.red.shade800,
+                  ),
+                  _buildHighLowStat(
+                    'High',
+                    card.high,
+                    currencyFormatter,
+                    textTheme,
+                    Colors.green.shade800,
+                  ),
+                ],
+              ),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _buildHighLowStat(
-                  'Low',
-                  card.low,
-                  currencyFormatter,
-                  textTheme,
-                  Colors.red.shade800,
-                ),
-                _buildHighLowStat(
-                  'High',
-                  card.high,
-                  currencyFormatter,
-                  textTheme,
-                  Colors.green.shade800,
-                ),
-              ],
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -183,7 +194,7 @@ class RateCardWidget extends StatelessWidget {
         children: [
           TextSpan(text: '$label: '),
           TextSpan(
-            text: formatter.format(double.tryParse(value ?? "0") ?? 0),
+            text: formatter.format(double.tryParse(value) ?? 0),
             style: TextStyle(fontWeight: FontWeight.w600, color: color),
           ),
         ],

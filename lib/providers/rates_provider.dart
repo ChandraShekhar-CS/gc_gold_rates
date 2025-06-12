@@ -6,10 +6,8 @@ import 'package:home_widget/home_widget.dart';
 import 'package:intl/intl.dart';
 import '../models/rate_card.dart';
 import '../services/api_service.dart';
-
 void updateHomeWidget(RateCard? goldCard, RateCard? silverCard) {
   final formattedTime = DateFormat('hh:mm a').format(DateTime.now());
-
   HomeWidget.saveWidgetData<String>(
     'gold_rate',
     "₹ ${goldCard?.buyRate ?? '...'}",
@@ -19,21 +17,18 @@ void updateHomeWidget(RateCard? goldCard, RateCard? silverCard) {
     "₹ ${silverCard?.buyRate ?? '...'}",
   );
   HomeWidget.saveWidgetData<String>('widget_timestamp', formattedTime);
-
   HomeWidget.updateWidget(
     name: 'RatesWidgetProvider',
     androidName: 'RatesWidgetProvider',
     iOSName: 'RatesWidget',
   );
 }
-
 class RatesProvider with ChangeNotifier {
   final ApiService _apiService = ApiService();
   List<RateCard> rateCards = [];
   bool isLoading = false;
   String? errorMessage;
   Timer? _timer;
-
   final List<Map<String, dynamic>> _cardConfigs = [
     {'title': 'Gold 995', 'uniqueId': 0, 'apiSymbol': 'gold'},
     {'title': 'Gold Future', 'uniqueId': 2, 'apiSymbol': 'goldfuture'},
@@ -51,14 +46,12 @@ class RatesProvider with ChangeNotifier {
   void _initializeCards() async {
     final prefs = await SharedPreferences.getInstance();
     List<String>? savedOrderIds = prefs.getStringList('cardOrder');
-
     List<int> order =
         savedOrderIds?.map(int.parse).toList() ??
         _cardConfigs.map<int>((c) => c['uniqueId']).toList();
     Map<int, Map<String, dynamic>> configMap = {
       for (var c in _cardConfigs) c['uniqueId']: c,
     };
-
     rateCards = order
         .map(
           (id) => RateCard(
@@ -70,20 +63,15 @@ class RatesProvider with ChangeNotifier {
         .toList();
     await fetchRates();
   }
-
   Future<void> fetchRates() async {
     if (isLoading) return;
     isLoading = true;
-
     if (rateCards.isNotEmpty && rateCards.first.buyRate == "0.0") {
       notifyListeners();
     }
     try {
       final data = await _apiService.fetchLiveRates();
-
-      developer.log('API Response Data: $data', name: 'RatesProvider');
       Map<String, dynamic>? ratesData;
-
       if (data.containsKey('rates') && data['rates'] is Map<String, dynamic>) {
         ratesData = data['rates'] as Map<String, dynamic>;
       } else if (data.isNotEmpty) {
@@ -117,7 +105,6 @@ class RatesProvider with ChangeNotifier {
       }
     } catch (e) {
       errorMessage = e.toString();
-
       developer.log(
         'Error fetching rates: $e',
         name: 'RatesProvider',
@@ -128,14 +115,12 @@ class RatesProvider with ChangeNotifier {
       notifyListeners();
     }
   }
-
   void startAutoRefresh() {
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       fetchRates();
     });
   }
-
   void reorderCards(int oldIndex, int newIndex) async {
     if (oldIndex < newIndex) {
       newIndex -= 1;
@@ -149,7 +134,6 @@ class RatesProvider with ChangeNotifier {
     await prefs.setStringList('cardOrder', newOrderIds);
     notifyListeners();
   }
-
   @override
   void dispose() {
     _timer?.cancel();

@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-
 class ApiService {
   final String _liveApiUrl = "https://goldrate.divyanshbansal.com/api/live";
   final String _graphApiBaseUrl =
@@ -23,12 +22,11 @@ class ApiService {
       throw Exception('Failed to connect to the server. Error: $e');
     }
   }
-
   Future<Map<String, dynamic>> fetchGraphData(
     String series,
     String queryParams,
   ) async {
-    final url = Uri.parse('$_graphApiBaseUrl/$series$queryParams');
+    final url = Uri.parse('$_graphApiBaseUrl$queryParams');
     try {
       final response = await http.get(
         url,

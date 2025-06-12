@@ -34,3 +34,39 @@ foreach ($FilePath in $FilePaths) {
 }
 Set-Content -Path $OutputFilePath -Value $OutputContent
 Write-Output "Successfully processed files to: $OutputFilePath"
+
+
+
+$currentPath = Get-Location
+$files = Get-ChildItem -File -Path $currentPath -Recurse
+foreach ($file in $files) {
+    $absolutePath = $file.FullName
+    Write-Output $absolutePath
+}
+
+
+$FilePaths = @(
+"C:\MyData\Flutter\flutter_application_1\lib\main.dart"
+"C:\MyData\Flutter\flutter_application_1\lib\models\rate_card.dart"
+"C:\MyData\Flutter\flutter_application_1\lib\providers\rates_provider.dart"
+"C:\MyData\Flutter\flutter_application_1\lib\screens\graphs_screen.dart"
+"C:\MyData\Flutter\flutter_application_1\lib\screens\main_screen.dart"
+"C:\MyData\Flutter\flutter_application_1\lib\services\api_service.dart"
+"C:\MyData\Flutter\flutter_application_1\lib\widgets\rate_card.dart"
+)
+$OutputFilePath = "C:\MyData\Flutter\flutter_application_1\prompt.txt"
+$OutputContent = ""
+foreach ($FilePath in $FilePaths) {
+    if (Test-Path -Path $FilePath -PathType Leaf) {
+        $AbsolutePath = (Resolve-Path $FilePath).Path
+        $FileContent = Get-Content -Path $FilePath -Raw
+        
+        $OutputContent += "Path: $AbsolutePath`r`n"
+        $OutputContent += "Content:`r`n$FileContent`r`n`r`n"
+    }
+    else {
+        Write-Warning "File not found: $FilePath"
+    }
+}
+Set-Content -Path $OutputFilePath -Value $OutputContent
+Write-Output "Successfully processed files to: $OutputFilePath"

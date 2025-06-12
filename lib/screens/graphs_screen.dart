@@ -1,12 +1,25 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import '../services/api_service.dart';
+import 'dart:developer' as developer;
+
+const Map<String, int> _seriesIndexMap = {
+  'golddollar': 0,
+  'silverdollar': 1,
+  'dollarinr': 2,
+  'goldfuture': 3,
+  'silverfuture': 4,
+  'gold': 5,
+  'goldrefine': 6,
+  'goldrtgs': 7,
+};
 
 class GraphsScreen extends StatefulWidget {
-  final int initialSeriesIndex;
-  const GraphsScreen({super.key, this.initialSeriesIndex = 0});
+  final String? initialSeriesSymbol;
+  const GraphsScreen({super.key, this.initialSeriesSymbol});
   @override
   State<GraphsScreen> createState() => _GraphsScreenState();
 }
@@ -25,7 +38,6 @@ class _GraphsScreenState extends State<GraphsScreen> {
   final ApiService _apiService = ApiService();
   final List<String> _seriesOptions = const [
     "gold",
-    "silver",
     "goldfuture",
     "silverfuture",
     "dollarinr",
@@ -37,7 +49,10 @@ class _GraphsScreenState extends State<GraphsScreen> {
   @override
   void initState() {
     super.initState();
-    _selectedSeries = _seriesOptions[widget.initialSeriesIndex];
+    _selectedSeries = widget.initialSeriesSymbol ?? _seriesOptions[0];
+    if (!_seriesOptions.contains(_selectedSeries)) {
+      _selectedSeries = _seriesOptions[0];
+    }
     _fetchData();
   }
 
@@ -53,10 +68,16 @@ class _GraphsScreenState extends State<GraphsScreen> {
         queryParams,
       );
       setState(() {
-        _apiResponse = ApiResponse.fromJson(data);
+        _apiResponse = ApiResponse.fromJson(data, _selectedSeries);
         _isLoading = false;
       });
-    } catch (e) {
+    } catch (e, stacktrace) {
+      developer.log(
+        'Error in _fetchData: $e',
+        name: 'GraphsScreen',
+        error: e,
+        stackTrace: stacktrace,
+      );
       setState(() {
         _error = e.toString();
         _isLoading = false;
@@ -247,9 +268,12 @@ class _GraphsScreenState extends State<GraphsScreen> {
           ? const Center(child: CircularProgressIndicator())
           : _error != null
           ? Center(
-              child: Text(
-                'Error: $_error',
-                style: const TextStyle(color: Colors.red),
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Text(
+                  'Error: $_error',
+                  style: const TextStyle(color: Colors.red),
+                ),
               ),
             )
           : _apiResponse == null || _apiResponse!.data.isEmpty
@@ -264,9 +288,20 @@ class _GraphsScreenState extends State<GraphsScreen> {
     for (var i = 0; i < _apiResponse!.data.length; i++) {
       final dataItem = _apiResponse!.data[i];
       final value = _isBuySelected ? dataItem.buy : dataItem.sell;
-      spots.add(FlSpot(i.toDouble(), value));
+      if (value > 0) {
+        spots.add(FlSpot(i.toDouble(), value));
+      }
     }
-    if (spots.isEmpty) return LineChartData();
+    if (spots.isEmpty)
+      return LineChartData(
+        lineBarsData: [
+          LineChartBarData(spots: [const FlSpot(0, 0)]),
+        ],
+        titlesData: const FlTitlesData(
+          bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+        ),
+      );
     return LineChartData(
       lineBarsData: [
         LineChartBarData(
@@ -329,15 +364,24 @@ class ApiResponse {
   final List<DataItem> data;
   final Stats? stats;
   ApiResponse({required this.data, this.stats});
-  factory ApiResponse.fromJson(Map<String, dynamic> json) {
-    return ApiResponse(
-      data: (json['data'] as List<dynamic>)
-          .map((item) => DataItem.fromJson(item as Map<String, dynamic>))
-          .toList(),
-      stats: json['stats'] != null
-          ? Stats.fromJson(json['stats'] as Map<String, dynamic>)
-          : null,
-    );
+  factory ApiResponse.fromJson(Map<String, dynamic> json, String series) {
+    Stats? seriesStats;
+    if (json['stats'] != null &&
+        json['stats'] is Map<String, dynamic> &&
+        (json['stats'] as Map<String, dynamic>)[series] != null) {
+      seriesStats = Stats.fromJson(
+        (json['stats'] as Map<String, dynamic>)[series] as Map<String, dynamic>,
+      );
+    }
+    List<DataItem> parsedData = [];
+    if (json['data'] is List) {
+      parsedData = (json['data'] as List<dynamic>)
+          .map(
+            (item) => DataItem.fromJson(item as Map<String, dynamic>, series),
+          )
+          .toList();
+    }
+    return ApiResponse(data: parsedData, stats: seriesStats);
   }
 }
 
@@ -346,10 +390,31 @@ class DataItem {
   final double sell;
   final DateTime createdAt;
   DataItem({required this.buy, required this.sell, required this.createdAt});
-  factory DataItem.fromJson(Map<String, dynamic> json) {
+  factory DataItem.fromJson(Map<String, dynamic> json, String series) {
+    double buy = 0.0;
+    double sell = 0.0;
+    if (json['data'] is String) {
+      try {
+        final List<dynamic> allSeriesData = jsonDecode(json['data']);
+        final int? seriesIndex = _seriesIndexMap[series];
+        if (seriesIndex != null && seriesIndex < allSeriesData.length) {
+          final List<dynamic> specificSeriesData = allSeriesData[seriesIndex];
+          if (specificSeriesData.length > 1) {
+            buy = double.tryParse(specificSeriesData[0].toString()) ?? 0.0;
+            sell = double.tryParse(specificSeriesData[1].toString()) ?? 0.0;
+          }
+        }
+      } catch (e) {
+        developer.log(
+          'Error decoding DataItem data string: ${json['data']}',
+          name: 'DataItem',
+          error: e,
+        );
+      }
+    }
     return DataItem(
-      buy: (json['buy'] as num).toDouble(),
-      sell: (json['sell'] as num).toDouble(),
+      buy: buy,
+      sell: sell,
       createdAt: DateTime.parse(json['createdAt']),
     );
   }
@@ -361,8 +426,12 @@ class Stats {
   Stats({required this.buy, required this.sell});
   factory Stats.fromJson(Map<String, dynamic> json) {
     return Stats(
-      buy: Price.fromJson(json['buy']),
-      sell: Price.fromJson(json['sell']),
+      buy: json['buy'] != null
+          ? Price.fromJson(json['buy'] as Map<String, dynamic>)
+          : Price(high: 0, low: 0),
+      sell: json['sell'] != null
+          ? Price.fromJson(json['sell'] as Map<String, dynamic>)
+          : Price(high: 0, low: 0),
     );
   }
 }
@@ -373,8 +442,8 @@ class Price {
   Price({required this.high, required this.low});
   factory Price.fromJson(Map<String, dynamic> json) {
     return Price(
-      high: (json['high'] as num).toDouble(),
-      low: (json['low'] as num).toDouble(),
+      high: (json['high'] as num?)?.toDouble() ?? 0.0,
+      low: (json['low'] as num?)?.toDouble() ?? 0.0,
     );
   }
 }

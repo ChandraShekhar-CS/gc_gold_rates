@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import '../providers/rates_provider.dart';
 import '../widgets/rate_card.dart';
 import 'graphs_screen.dart';
-
 class MainScreen extends StatelessWidget {
   const MainScreen({super.key});
   @override
@@ -47,7 +46,6 @@ class MainScreen extends StatelessWidget {
     );
   }
 }
-
 class AppDrawer extends StatelessWidget {
   const AppDrawer({super.key});
   @override
@@ -75,7 +73,9 @@ class AppDrawer extends StatelessWidget {
             title: const Text('Graphs'),
             onTap: () {
               Navigator.pop(context);
-              Navigator.pushNamed(context, '/graphs');
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (context) => const GraphsScreen()),
+              );
             },
           ),
         ],
