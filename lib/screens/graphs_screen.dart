@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
+import 'package:syncfusion_flutter_charts/charts.dart';
 import '../services/api_service.dart';
 import 'dart:developer' as developer;
 
@@ -26,6 +26,12 @@ class GraphsScreen extends StatefulWidget {
 
 enum TimeRange { day, week, month, year, custom }
 
+class _ChartData {
+  _ChartData(this.x, this.y);
+  final DateTime x;
+  final double y;
+}
+
 class _GraphsScreenState extends State<GraphsScreen> {
   bool _isLoading = true;
   String? _error;
@@ -36,6 +42,7 @@ class _GraphsScreenState extends State<GraphsScreen> {
   DateTime? _customStartDate;
   DateTime? _customEndDate;
   final ApiService _apiService = ApiService();
+  late ZoomPanBehavior _zoomPanBehavior;
   final List<String> _seriesOptions = const [
     "gold",
     "goldfuture",
@@ -53,6 +60,12 @@ class _GraphsScreenState extends State<GraphsScreen> {
     if (!_seriesOptions.contains(_selectedSeries)) {
       _selectedSeries = _seriesOptions[0];
     }
+    _zoomPanBehavior = ZoomPanBehavior(
+      enablePinching: true,
+      enablePanning: true,
+      enableSelectionZooming: true,
+      enableMouseWheelZooming: true,
+    );
     _fetchData();
   }
 
@@ -128,18 +141,21 @@ class _GraphsScreenState extends State<GraphsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Rate Trends Graph')),
+      appBar: AppBar(
+        title: const Text('Rate Trends Graph'),
+        backgroundColor: Theme.of(context).colorScheme.surfaceVariant,
+      ),
       body: ListView(
-        padding: const EdgeInsets.all(12.0),
+        padding: const EdgeInsets.all(16.0),
         children: [
           _buildSeriesSelector(),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           _buildBuySellToggle(),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           _buildTimeRangeToggle(),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
           _buildHighLowDisplay(),
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
           _buildChartContainer(),
         ],
       ),
@@ -149,9 +165,11 @@ class _GraphsScreenState extends State<GraphsScreen> {
   Widget _buildSeriesSelector() {
     return DropdownButtonFormField<String>(
       value: _selectedSeries,
-      decoration: const InputDecoration(
+      decoration: InputDecoration(
         labelText: 'Select Commodity',
-        border: OutlineInputBorder(),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        filled: true,
+        fillColor: Theme.of(context).colorScheme.surface.withOpacity(0.5),
       ),
       items: _seriesOptions.map((series) {
         return DropdownMenuItem(
@@ -169,20 +187,52 @@ class _GraphsScreenState extends State<GraphsScreen> {
   }
 
   Widget _buildBuySellToggle() {
+    final theme = Theme.of(context);
     return Center(
       child: ToggleButtons(
         isSelected: [_isBuySelected, !_isBuySelected],
         onPressed: (index) {
-          setState(() => _isBuySelected = index == 0);
+          if ((index == 0 && !_isBuySelected) ||
+              (index == 1 && _isBuySelected)) {
+            setState(() => _isBuySelected = index == 0);
+          }
         },
-        borderRadius: BorderRadius.circular(8),
-        constraints: const BoxConstraints(minHeight: 40.0, minWidth: 100.0),
-        children: const [Text('BUY'), Text('SELL')],
+        borderRadius: BorderRadius.circular(12),
+        selectedBorderColor: theme.colorScheme.primary,
+        selectedColor: theme.colorScheme.onPrimary,
+        fillColor: theme.colorScheme.primary,
+        color: theme.colorScheme.onSurface,
+        constraints: const BoxConstraints(minHeight: 44.0, minWidth: 120.0),
+        children: const [
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.trending_up),
+                SizedBox(width: 8),
+                Text('BUY'),
+              ],
+            ),
+          ),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.trending_down),
+                SizedBox(width: 8),
+                Text('SELL'),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildTimeRangeToggle() {
+    final theme = Theme.of(context);
     return Center(
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
@@ -199,11 +249,16 @@ class _GraphsScreenState extends State<GraphsScreen> {
               _fetchData();
             }
           },
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(12),
+          selectedBorderColor: theme.colorScheme.primary,
+          selectedColor: theme.colorScheme.onPrimary,
+          fillColor: theme.colorScheme.primary.withOpacity(0.8),
+          color: theme.colorScheme.onSurface,
+          constraints: const BoxConstraints(minHeight: 40.0),
           children: TimeRange.values
               .map(
                 (range) => Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
                   child: Text(range.name.toUpperCase()),
                 ),
               )
@@ -232,7 +287,7 @@ class _GraphsScreenState extends State<GraphsScreen> {
     setState(() {
       _selectedTimeRange = TimeRange.custom;
       _customStartDate = pickedStartDate;
-      _customEndDate = pickedEndDate;
+      _customEndDate = pickedEndDate.add(const Duration(days: 1));
     });
     _fetchData();
   }
@@ -249,114 +304,135 @@ class _GraphsScreenState extends State<GraphsScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceAround,
       children: [
-        Text(
-          'Lowest: ${formatter.format(price.low)}',
-          style: const TextStyle(color: Colors.red),
-        ),
-        Text(
-          'Highest: ${formatter.format(price.high)}',
-          style: const TextStyle(color: Colors.green),
-        ),
+        _buildStatPill('Lowest', formatter.format(price.low), Colors.red),
+        _buildStatPill('Highest', formatter.format(price.high), Colors.green),
       ],
+    );
+  }
+
+  Widget _buildStatPill(String label, String value, Color color) {
+    final textTheme = Theme.of(context).textTheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withOpacity(0.5)),
+      ),
+      child: Column(
+        children: [
+          Text(label, style: textTheme.labelMedium?.copyWith(color: color)),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            style: textTheme.titleSmall?.copyWith(
+              color: color,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildChartContainer() {
-    return SizedBox(
-      height: 300,
-      child: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-          ? Center(
-              child: Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Text(
-                  'Error: $_error',
-                  style: const TextStyle(color: Colors.red),
-                ),
-              ),
-            )
-          : _apiResponse == null || _apiResponse!.data.isEmpty
-          ? const Center(child: Text('No data available for this range.'))
-          : LineChart(_buildChartData()),
-    );
-  }
-
-  LineChartData _buildChartData() {
-    List<FlSpot> spots = [];
-    if (_apiResponse == null) return LineChartData();
-    for (var i = 0; i < _apiResponse!.data.length; i++) {
-      final dataItem = _apiResponse!.data[i];
-      final value = _isBuySelected ? dataItem.buy : dataItem.sell;
-      if (value > 0) {
-        spots.add(FlSpot(i.toDouble(), value));
-      }
-    }
-    if (spots.isEmpty)
-      return LineChartData(
-        lineBarsData: [
-          LineChartBarData(spots: [const FlSpot(0, 0)]),
-        ],
-        titlesData: const FlTitlesData(
-          bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-        ),
-      );
-    return LineChartData(
-      lineBarsData: [
-        LineChartBarData(
-          spots: spots,
-          isCurved: true,
-          color: Colors.blue,
-          barWidth: 2,
-          isStrokeCapRound: true,
-          dotData: const FlDotData(show: false),
-          belowBarData: BarAreaData(
-            show: true,
-            gradient: LinearGradient(
-              colors: [
-                Colors.blue.withOpacity(0.3),
-                Colors.blue.withOpacity(0.0),
-              ],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-            ),
-          ),
-        ),
-      ],
-      gridData: const FlGridData(show: true),
-      borderData: FlBorderData(show: true),
-      titlesData: FlTitlesData(
-        leftTitles: const AxisTitles(
-          sideTitles: SideTitles(showTitles: true, reservedSize: 50),
-        ),
-        rightTitles: const AxisTitles(
-          sideTitles: SideTitles(showTitles: false),
-        ),
-        topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-        bottomTitles: AxisTitles(
-          sideTitles: SideTitles(
-            showTitles: true,
-            reservedSize: 30,
-            interval: (spots.length / 4).ceilToDouble(),
-            getTitlesWidget: (value, meta) {
-              final index = value.toInt();
-              if (index < 0 || index >= _apiResponse!.data.length) {
-                return const SizedBox();
-              }
-              final date = _apiResponse!.data[index].createdAt;
-              String label = (_selectedTimeRange == TimeRange.day)
-                  ? DateFormat.jm().format(date)
-                  : DateFormat('dd/MM').format(date);
-              return SideTitleWidget(
-                meta: meta,
-                child: Text(label, style: const TextStyle(fontSize: 10)),
-              );
-            },
-          ),
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      color: Theme.of(context).colorScheme.surface.withOpacity(0.7),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(8, 24, 16, 12),
+        child: SizedBox(
+          height: 320,
+          child: _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : _error != null
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Text(
+                      'An error occurred:\n$_error',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
+                  ),
+                )
+              : _getChartData().isEmpty
+              ? const Center(child: Text('No data available for this range.'))
+              : _buildChart(),
         ),
       ),
     );
+  }
+
+  Widget _buildChart() {
+    return SfCartesianChart(
+      primaryXAxis: DateTimeAxis(
+        edgeLabelPlacement: EdgeLabelPlacement.shift,
+        dateFormat: _getDateFormat(),
+        intervalType: _getIntervalType(),
+      ),
+      primaryYAxis: NumericAxis(
+        numberFormat: NumberFormat.compactCurrency(
+          locale: 'en_IN',
+          symbol: '₹',
+        ),
+        majorGridLines: const MajorGridLines(width: 0.5),
+      ),
+      series: <LineSeries<_ChartData, DateTime>>[
+        LineSeries<_ChartData, DateTime>(
+          dataSource: _getChartData(),
+          xValueMapper: (_ChartData data, _) => data.x,
+          yValueMapper: (_ChartData data, _) => data.y,
+          name: _selectedSeries.toUpperCase(),
+          color: Theme.of(context).colorScheme.primary,
+        ),
+      ],
+      tooltipBehavior: TooltipBehavior(enable: true),
+      zoomPanBehavior: _zoomPanBehavior,
+    );
+  }
+
+  List<_ChartData> _getChartData() {
+    if (_apiResponse == null) return [];
+    final data = <_ChartData>[];
+    for (final dataItem in _apiResponse!.data) {
+      final value = _isBuySelected ? dataItem.buy : dataItem.sell;
+      if (value > 0) {
+        data.add(_ChartData(dataItem.createdAt, value));
+      }
+    }
+    return data;
+  }
+
+  DateFormat _getDateFormat() {
+    switch (_selectedTimeRange) {
+      case TimeRange.day:
+        return DateFormat.jm();
+      case TimeRange.week:
+      case TimeRange.month:
+      case TimeRange.custom:
+        return DateFormat('dd/MM');
+      case TimeRange.year:
+        return DateFormat('MMM yy');
+    }
+  }
+
+  DateTimeIntervalType _getIntervalType() {
+    switch (_selectedTimeRange) {
+      case TimeRange.day:
+        return DateTimeIntervalType.hours;
+      case TimeRange.week:
+        return DateTimeIntervalType.days;
+      case TimeRange.month:
+        return DateTimeIntervalType.days;
+      case TimeRange.year:
+        return DateTimeIntervalType.months;
+      case TimeRange.custom:
+        return DateTimeIntervalType.auto;
+    }
   }
 }
 
@@ -381,6 +457,7 @@ class ApiResponse {
           )
           .toList();
     }
+    parsedData.sort((a, b) => a.createdAt.compareTo(b.createdAt));
     return ApiResponse(data: parsedData, stats: seriesStats);
   }
 }

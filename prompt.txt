@@ -1,0 +1,1000 @@
+Path: C:\MyData\Flutter\flutter_application_1\lib\main.dart
+Content:
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'providers/rates_provider.dart';
+import 'screens/main_screen.dart';
+import 'screens/graphs_screen.dart';
+
+void main() {
+  runApp(const MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+  @override
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (context) => RatesProvider(),
+      child: MaterialApp(
+        title: 'GC Gold Rates',
+        theme: ThemeData(
+          useMaterial3: true,
+          colorScheme: ColorScheme.fromSeed(seedColor: Colors.yellow),
+        ),
+        debugShowCheckedModeBanner: false,
+        home: const MainScreen(),
+        routes: {'/graphs': (context) => const GraphsScreen()},
+      ),
+    );
+  }
+}
+
+
+Path: C:\MyData\Flutter\flutter_application_1\lib\models\rate_card.dart
+Content:
+class RateCard {
+  final int uniqueId;
+  final String title;
+  final String apiSymbol;
+  String buyRate = "0.0";
+  String sellRate = "0.0";
+  String high = "0.0";
+  String low = "0.0";
+  String previousBuyRate = "0.0";
+  String previousSellRate = "0.0";
+  RateCard({
+    required this.uniqueId,
+    required this.title,
+    required this.apiSymbol,
+  });
+}
+
+
+Path: C:\MyData\Flutter\flutter_application_1\lib\providers\rates_provider.dart
+Content:
+import 'dart:async';
+import 'dart:developer' as developer;
+import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:home_widget/home_widget.dart';
+import 'package:intl/intl.dart';
+import '../models/rate_card.dart';
+import '../services/api_service.dart';
+void updateHomeWidget(RateCard? goldCard, RateCard? silverCard) {
+  final formattedTime = DateFormat('hh:mm a').format(DateTime.now());
+  HomeWidget.saveWidgetData<String>(
+    'gold_rate',
+    "₹ ${goldCard?.buyRate ?? '...'}",
+  );
+  HomeWidget.saveWidgetData<String>(
+    'silver_rate',
+    "₹ ${silverCard?.buyRate ?? '...'}",
+  );
+  HomeWidget.saveWidgetData<String>('widget_timestamp', formattedTime);
+  HomeWidget.updateWidget(
+    name: 'RatesWidgetProvider',
+    androidName: 'RatesWidgetProvider',
+    iOSName: 'RatesWidget',
+  );
+}
+class RatesProvider with ChangeNotifier {
+  final ApiService _apiService = ApiService();
+  List<RateCard> rateCards = [];
+  bool isLoading = false;
+  String? errorMessage;
+  Timer? _timer;
+  final List<Map<String, dynamic>> _cardConfigs = [
+    {'title': 'Gold 995', 'uniqueId': 0, 'apiSymbol': 'gold'},
+    {'title': 'Gold Future', 'uniqueId': 2, 'apiSymbol': 'goldfuture'},
+    {'title': 'Silver Future', 'uniqueId': 3, 'apiSymbol': 'silverfuture'},
+    {'title': 'USD / INR', 'uniqueId': 4, 'apiSymbol': 'dollarinr'},
+    {'title': 'Gold / USD', 'uniqueId': 5, 'apiSymbol': 'golddollar'},
+    {'title': 'Silver / USD', 'uniqueId': 6, 'apiSymbol': 'silverdollar'},
+    {'title': 'Gold / Refine', 'uniqueId': 7, 'apiSymbol': 'goldrefine'},
+    {'title': 'Gold / RTGS', 'uniqueId': 8, 'apiSymbol': 'goldrtgs'},
+  ];
+  RatesProvider() {
+    _initializeCards();
+    startAutoRefresh();
+  }
+  void _initializeCards() async {
+    final prefs = await SharedPreferences.getInstance();
+    List<String>? savedOrderIds = prefs.getStringList('cardOrder');
+    List<int> order =
+        savedOrderIds?.map(int.parse).toList() ??
+        _cardConfigs.map<int>((c) => c['uniqueId']).toList();
+    Map<int, Map<String, dynamic>> configMap = {
+      for (var c in _cardConfigs) c['uniqueId']: c,
+    };
+    rateCards = order
+        .map(
+          (id) => RateCard(
+            uniqueId: id,
+            title: configMap[id]!['title'],
+            apiSymbol: configMap[id]!['apiSymbol'],
+          ),
+        )
+        .toList();
+    await fetchRates();
+  }
+  Future<void> fetchRates() async {
+    if (isLoading) return;
+    isLoading = true;
+    if (rateCards.isNotEmpty && rateCards.first.buyRate == "0.0") {
+      notifyListeners();
+    }
+    try {
+      final data = await _apiService.fetchLiveRates();
+      Map<String, dynamic>? ratesData;
+      if (data.containsKey('rates') && data['rates'] is Map<String, dynamic>) {
+        ratesData = data['rates'] as Map<String, dynamic>;
+      } else if (data.isNotEmpty) {
+        ratesData = data;
+      }
+      if (ratesData != null) {
+        for (var card in rateCards) {
+          if (ratesData.containsKey(card.apiSymbol)) {
+            final rateInfo = ratesData[card.apiSymbol];
+            card.previousBuyRate = card.buyRate;
+            card.previousSellRate = card.sellRate;
+            if (rateInfo != null) {
+              if (rateInfo is Map<String, dynamic>) {
+                card.buyRate = rateInfo['buy']?.toString() ?? "0.0";
+                card.sellRate = rateInfo['sell']?.toString() ?? "0.0";
+                card.high = rateInfo['high']?.toString() ?? "0.0";
+                card.low = rateInfo['low']?.toString() ?? "0.0";
+              } else {
+                final rateValue = rateInfo.toString();
+                card.buyRate = rateValue;
+                card.sellRate = rateValue;
+                card.high = rateValue;
+                card.low = rateValue;
+              }
+            }
+          }
+        }
+        errorMessage = null;
+      } else {
+        throw Exception('Could not parse rates from the API response.');
+      }
+    } catch (e) {
+      errorMessage = e.toString();
+      developer.log(
+        'Error fetching rates: $e',
+        name: 'RatesProvider',
+        error: e,
+      );
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
+  }
+  void startAutoRefresh() {
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      fetchRates();
+    });
+  }
+  void reorderCards(int oldIndex, int newIndex) async {
+    if (oldIndex < newIndex) {
+      newIndex -= 1;
+    }
+    final RateCard item = rateCards.removeAt(oldIndex);
+    rateCards.insert(newIndex, item);
+    final prefs = await SharedPreferences.getInstance();
+    List<String> newOrderIds = rateCards
+        .map((c) => c.uniqueId.toString())
+        .toList();
+    await prefs.setStringList('cardOrder', newOrderIds);
+    notifyListeners();
+  }
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+}
+
+
+Path: C:\MyData\Flutter\flutter_application_1\lib\screens\graphs_screen.dart
+Content:
+import 'dart:async';
+import 'dart:convert';
+import 'package:flutter/material.dart';
+import 'package:fl_chart/fl_chart.dart';
+import 'package:intl/intl.dart';
+import '../services/api_service.dart';
+import 'dart:developer' as developer;
+
+const Map<String, int> _seriesIndexMap = {
+  'golddollar': 0,
+  'silverdollar': 1,
+  'dollarinr': 2,
+  'goldfuture': 3,
+  'silverfuture': 4,
+  'gold': 5,
+  'goldrefine': 6,
+  'goldrtgs': 7,
+};
+
+class GraphsScreen extends StatefulWidget {
+  final String? initialSeriesSymbol;
+  const GraphsScreen({super.key, this.initialSeriesSymbol});
+  @override
+  State<GraphsScreen> createState() => _GraphsScreenState();
+}
+
+enum TimeRange { day, week, month, year, custom }
+
+class _GraphsScreenState extends State<GraphsScreen> {
+  bool _isLoading = true;
+  String? _error;
+  ApiResponse? _apiResponse;
+  late String _selectedSeries;
+  bool _isBuySelected = true;
+  TimeRange _selectedTimeRange = TimeRange.day;
+  DateTime? _customStartDate;
+  DateTime? _customEndDate;
+  final ApiService _apiService = ApiService();
+  final List<String> _seriesOptions = const [
+    "gold",
+    "goldfuture",
+    "silverfuture",
+    "dollarinr",
+    "golddollar",
+    "silverdollar",
+    "goldrefine",
+    "goldrtgs",
+  ];
+  @override
+  void initState() {
+    super.initState();
+    _selectedSeries = widget.initialSeriesSymbol ?? _seriesOptions[0];
+    if (!_seriesOptions.contains(_selectedSeries)) {
+      _selectedSeries = _seriesOptions[0];
+    }
+    _fetchData();
+  }
+
+  Future<void> _fetchData() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    try {
+      final queryParams = _buildApiQuery();
+      final data = await _apiService.fetchGraphData(
+        _selectedSeries,
+        queryParams,
+      );
+      setState(() {
+        _apiResponse = ApiResponse.fromJson(data, _selectedSeries);
+        _isLoading = false;
+      });
+    } catch (e, stacktrace) {
+      developer.log(
+        'Error in _fetchData: $e',
+        name: 'GraphsScreen',
+        error: e,
+        stackTrace: stacktrace,
+      );
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
+      });
+    }
+  }
+
+  String _buildApiQuery() {
+    final sdf = DateFormat('yyyy-MM-dd');
+    String startDate, endDate, resolution;
+    if (_selectedTimeRange == TimeRange.custom &&
+        _customStartDate != null &&
+        _customEndDate != null) {
+      startDate = sdf.format(_customStartDate!);
+      endDate = sdf.format(_customEndDate!);
+      resolution = 'hour';
+    } else {
+      final now = DateTime.now();
+      endDate = sdf.format(now);
+      DateTime startDateTime;
+      switch (_selectedTimeRange) {
+        case TimeRange.day:
+          startDateTime = now.subtract(const Duration(days: 1));
+          resolution = '15min';
+          break;
+        case TimeRange.week:
+          startDateTime = now.subtract(const Duration(days: 7));
+          resolution = 'hour';
+          break;
+        case TimeRange.month:
+          startDateTime = now.subtract(const Duration(days: 30));
+          resolution = '4hour';
+          break;
+        case TimeRange.year:
+          startDateTime = now.subtract(const Duration(days: 365));
+          resolution = 'week';
+          break;
+        case TimeRange.custom:
+          startDateTime = now.subtract(const Duration(days: 7));
+          resolution = 'hour';
+          break;
+      }
+      startDate = sdf.format(startDateTime);
+    }
+    return '?startDate=$startDate&endDate=$endDate&resolution=$resolution';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Rate Trends Graph')),
+      body: ListView(
+        padding: const EdgeInsets.all(12.0),
+        children: [
+          _buildSeriesSelector(),
+          const SizedBox(height: 12),
+          _buildBuySellToggle(),
+          const SizedBox(height: 12),
+          _buildTimeRangeToggle(),
+          const SizedBox(height: 16),
+          _buildHighLowDisplay(),
+          const SizedBox(height: 16),
+          _buildChartContainer(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSeriesSelector() {
+    return DropdownButtonFormField<String>(
+      value: _selectedSeries,
+      decoration: const InputDecoration(
+        labelText: 'Select Commodity',
+        border: OutlineInputBorder(),
+      ),
+      items: _seriesOptions.map((series) {
+        return DropdownMenuItem(
+          value: series,
+          child: Text(series.toUpperCase()),
+        );
+      }).toList(),
+      onChanged: (value) {
+        if (value != null) {
+          setState(() => _selectedSeries = value);
+          _fetchData();
+        }
+      },
+    );
+  }
+
+  Widget _buildBuySellToggle() {
+    return Center(
+      child: ToggleButtons(
+        isSelected: [_isBuySelected, !_isBuySelected],
+        onPressed: (index) {
+          setState(() => _isBuySelected = index == 0);
+        },
+        borderRadius: BorderRadius.circular(8),
+        constraints: const BoxConstraints(minHeight: 40.0, minWidth: 100.0),
+        children: const [Text('BUY'), Text('SELL')],
+      ),
+    );
+  }
+
+  Widget _buildTimeRangeToggle() {
+    return Center(
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: ToggleButtons(
+          isSelected: TimeRange.values
+              .map((range) => _selectedTimeRange == range)
+              .toList(),
+          onPressed: (index) {
+            final selectedRange = TimeRange.values[index];
+            if (selectedRange == TimeRange.custom) {
+              _showCustomDatePicker();
+            } else {
+              setState(() => _selectedTimeRange = selectedRange);
+              _fetchData();
+            }
+          },
+          borderRadius: BorderRadius.circular(8),
+          children: TimeRange.values
+              .map(
+                (range) => Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: Text(range.name.toUpperCase()),
+                ),
+              )
+              .toList(),
+        ),
+      ),
+    );
+  }
+
+  void _showCustomDatePicker() async {
+    final now = DateTime.now();
+    final pickedStartDate = await showDatePicker(
+      context: context,
+      initialDate: _customStartDate ?? now.subtract(const Duration(days: 7)),
+      firstDate: DateTime(2020),
+      lastDate: now,
+    );
+    if (pickedStartDate == null) return;
+    final pickedEndDate = await showDatePicker(
+      context: context,
+      initialDate: _customEndDate ?? now,
+      firstDate: pickedStartDate,
+      lastDate: now,
+    );
+    if (pickedEndDate == null) return;
+    setState(() {
+      _selectedTimeRange = TimeRange.custom;
+      _customStartDate = pickedStartDate;
+      _customEndDate = pickedEndDate;
+    });
+    _fetchData();
+  }
+
+  Widget _buildHighLowDisplay() {
+    if (_apiResponse?.stats == null) return const SizedBox.shrink();
+    final stats = _apiResponse!.stats!;
+    final price = _isBuySelected ? stats.buy : stats.sell;
+    final formatter = NumberFormat.currency(
+      locale: 'en_IN',
+      symbol: '₹ ',
+      decimalDigits: 2,
+    );
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceAround,
+      children: [
+        Text(
+          'Lowest: ${formatter.format(price.low)}',
+          style: const TextStyle(color: Colors.red),
+        ),
+        Text(
+          'Highest: ${formatter.format(price.high)}',
+          style: const TextStyle(color: Colors.green),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildChartContainer() {
+    return SizedBox(
+      height: 300,
+      child: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Text(
+                  'Error: $_error',
+                  style: const TextStyle(color: Colors.red),
+                ),
+              ),
+            )
+          : _apiResponse == null || _apiResponse!.data.isEmpty
+          ? const Center(child: Text('No data available for this range.'))
+          : LineChart(_buildChartData()),
+    );
+  }
+
+  LineChartData _buildChartData() {
+    List<FlSpot> spots = [];
+    if (_apiResponse == null) return LineChartData();
+    for (var i = 0; i < _apiResponse!.data.length; i++) {
+      final dataItem = _apiResponse!.data[i];
+      final value = _isBuySelected ? dataItem.buy : dataItem.sell;
+      if (value > 0) {
+        spots.add(FlSpot(i.toDouble(), value));
+      }
+    }
+    if (spots.isEmpty)
+      return LineChartData(
+        lineBarsData: [
+          LineChartBarData(spots: [const FlSpot(0, 0)]),
+        ],
+        titlesData: const FlTitlesData(
+          bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+        ),
+      );
+    return LineChartData(
+      lineBarsData: [
+        LineChartBarData(
+          spots: spots,
+          isCurved: true,
+          color: Colors.blue,
+          barWidth: 2,
+          isStrokeCapRound: true,
+          dotData: const FlDotData(show: false),
+          belowBarData: BarAreaData(
+            show: true,
+            gradient: LinearGradient(
+              colors: [
+                Colors.blue.withOpacity(0.3),
+                Colors.blue.withOpacity(0.0),
+              ],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+          ),
+        ),
+      ],
+      gridData: const FlGridData(show: true),
+      borderData: FlBorderData(show: true),
+      titlesData: FlTitlesData(
+        leftTitles: const AxisTitles(
+          sideTitles: SideTitles(showTitles: true, reservedSize: 50),
+        ),
+        rightTitles: const AxisTitles(
+          sideTitles: SideTitles(showTitles: false),
+        ),
+        topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+        bottomTitles: AxisTitles(
+          sideTitles: SideTitles(
+            showTitles: true,
+            reservedSize: 30,
+            interval: (spots.length / 4).ceilToDouble(),
+            getTitlesWidget: (value, meta) {
+              final index = value.toInt();
+              if (index < 0 || index >= _apiResponse!.data.length) {
+                return const SizedBox();
+              }
+              final date = _apiResponse!.data[index].createdAt;
+              String label = (_selectedTimeRange == TimeRange.day)
+                  ? DateFormat.jm().format(date)
+                  : DateFormat('dd/MM').format(date);
+              return SideTitleWidget(
+                meta: meta,
+                child: Text(label, style: const TextStyle(fontSize: 10)),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class ApiResponse {
+  final List<DataItem> data;
+  final Stats? stats;
+  ApiResponse({required this.data, this.stats});
+  factory ApiResponse.fromJson(Map<String, dynamic> json, String series) {
+    Stats? seriesStats;
+    if (json['stats'] != null &&
+        json['stats'] is Map<String, dynamic> &&
+        (json['stats'] as Map<String, dynamic>)[series] != null) {
+      seriesStats = Stats.fromJson(
+        (json['stats'] as Map<String, dynamic>)[series] as Map<String, dynamic>,
+      );
+    }
+    List<DataItem> parsedData = [];
+    if (json['data'] is List) {
+      parsedData = (json['data'] as List<dynamic>)
+          .map(
+            (item) => DataItem.fromJson(item as Map<String, dynamic>, series),
+          )
+          .toList();
+    }
+    return ApiResponse(data: parsedData, stats: seriesStats);
+  }
+}
+
+class DataItem {
+  final double buy;
+  final double sell;
+  final DateTime createdAt;
+  DataItem({required this.buy, required this.sell, required this.createdAt});
+  factory DataItem.fromJson(Map<String, dynamic> json, String series) {
+    double buy = 0.0;
+    double sell = 0.0;
+    if (json['data'] is String) {
+      try {
+        final List<dynamic> allSeriesData = jsonDecode(json['data']);
+        final int? seriesIndex = _seriesIndexMap[series];
+        if (seriesIndex != null && seriesIndex < allSeriesData.length) {
+          final List<dynamic> specificSeriesData = allSeriesData[seriesIndex];
+          if (specificSeriesData.length > 1) {
+            buy = double.tryParse(specificSeriesData[0].toString()) ?? 0.0;
+            sell = double.tryParse(specificSeriesData[1].toString()) ?? 0.0;
+          }
+        }
+      } catch (e) {
+        developer.log(
+          'Error decoding DataItem data string: ${json['data']}',
+          name: 'DataItem',
+          error: e,
+        );
+      }
+    }
+    return DataItem(
+      buy: buy,
+      sell: sell,
+      createdAt: DateTime.parse(json['createdAt']),
+    );
+  }
+}
+
+class Stats {
+  final Price buy;
+  final Price sell;
+  Stats({required this.buy, required this.sell});
+  factory Stats.fromJson(Map<String, dynamic> json) {
+    return Stats(
+      buy: json['buy'] != null
+          ? Price.fromJson(json['buy'] as Map<String, dynamic>)
+          : Price(high: 0, low: 0),
+      sell: json['sell'] != null
+          ? Price.fromJson(json['sell'] as Map<String, dynamic>)
+          : Price(high: 0, low: 0),
+    );
+  }
+}
+
+class Price {
+  final double high;
+  final double low;
+  Price({required this.high, required this.low});
+  factory Price.fromJson(Map<String, dynamic> json) {
+    return Price(
+      high: (json['high'] as num?)?.toDouble() ?? 0.0,
+      low: (json['low'] as num?)?.toDouble() ?? 0.0,
+    );
+  }
+}
+
+
+Path: C:\MyData\Flutter\flutter_application_1\lib\screens\main_screen.dart
+Content:
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/rates_provider.dart';
+import '../widgets/rate_card.dart';
+import 'graphs_screen.dart';
+class MainScreen extends StatelessWidget {
+  const MainScreen({super.key});
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('GC Gold Rates'),
+        backgroundColor: Colors.amber.shade700,
+        foregroundColor: Colors.white,
+      ),
+      drawer: const AppDrawer(),
+      body: RefreshIndicator(
+        onRefresh: () async {
+          await Provider.of<RatesProvider>(context, listen: false).fetchRates();
+        },
+        child: Consumer<RatesProvider>(
+          builder: (context, provider, child) {
+            if (provider.isLoading && provider.rateCards.isEmpty) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (provider.errorMessage != null && provider.rateCards.isEmpty) {
+              return Center(child: Text('Error: ${provider.errorMessage}'));
+            }
+            if (provider.rateCards.isEmpty) {
+              return const Center(child: Text('No rate cards configured.'));
+            }
+            return ReorderableListView.builder(
+              padding: const EdgeInsets.all(8),
+              itemCount: provider.rateCards.length,
+              itemBuilder: (context, index) {
+                final card = provider.rateCards[index];
+                return RateCardWidget(key: ValueKey(card.uniqueId), card: card);
+              },
+              onReorder: (oldIndex, newIndex) {
+                provider.reorderCards(oldIndex, newIndex);
+              },
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+class AppDrawer extends StatelessWidget {
+  const AppDrawer({super.key});
+  @override
+  Widget build(BuildContext context) {
+    return Drawer(
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: <Widget>[
+          DrawerHeader(
+            decoration: BoxDecoration(color: Colors.amber.shade700),
+            child: const Text(
+              'Navigation',
+              style: TextStyle(color: Colors.white, fontSize: 24),
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.home),
+            title: const Text('Live Rates'),
+            onTap: () {
+              Navigator.pop(context);
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.show_chart),
+            title: const Text('Graphs'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (context) => const GraphsScreen()),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
+Path: C:\MyData\Flutter\flutter_application_1\lib\services\api_service.dart
+Content:
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+class ApiService {
+  final String _liveApiUrl = "https://goldrate.divyanshbansal.com/api/live";
+  final String _graphApiBaseUrl =
+      "https://goldrate.divyanshbansal.com/api/rates";
+  Future<Map<String, dynamic>> fetchLiveRates() async {
+    final url = Uri.parse(_liveApiUrl);
+    try {
+      final response = await http.get(
+        url,
+        headers: {'Accept': 'application/json'},
+      );
+      if (response.statusCode == 200) {
+        return json.decode(response.body) as Map<String, dynamic>;
+      } else {
+        throw Exception(
+          'Failed to load live rates. Status code: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      throw Exception('Failed to connect to the server. Error: $e');
+    }
+  }
+  Future<Map<String, dynamic>> fetchGraphData(
+    String series,
+    String queryParams,
+  ) async {
+    final url = Uri.parse('$_graphApiBaseUrl$queryParams');
+    try {
+      final response = await http.get(
+        url,
+        headers: {'Accept': 'application/json'},
+      );
+      if (response.statusCode == 200) {
+        return json.decode(response.body) as Map<String, dynamic>;
+      } else {
+        throw Exception(
+          'Failed to load graph data. Status code: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      throw Exception('Failed to connect to the server. Error: $e');
+    }
+  }
+}
+
+
+Path: C:\MyData\Flutter\flutter_application_1\lib\widgets\rate_card.dart
+Content:
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import '../models/rate_card.dart' as model;
+import '../screens/graphs_screen.dart';
+
+class RateCardWidget extends StatelessWidget {
+  final model.RateCard card;
+  const RateCardWidget({super.key, required this.card});
+  @override
+  Widget build(BuildContext context) {
+    final currencyFormatter = NumberFormat.currency(
+      locale: 'en_IN',
+      symbol: '₹ ',
+      decimalDigits: 2,
+    );
+    final changeFormatter = NumberFormat("+#;-#", "en_IN");
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+    final double currentBuy = double.tryParse(card.buyRate) ?? 0;
+    final double prevBuy = double.tryParse(card.previousBuyRate) ?? 0;
+    final double buyChange = currentBuy - prevBuy;
+    final Color buyColor = buyChange == 0
+        ? Colors.grey.shade700
+        : (buyChange > 0 ? Colors.green.shade600 : Colors.red.shade600);
+    final IconData buyIcon = buyChange == 0
+        ? Icons.remove
+        : (buyChange > 0 ? Icons.arrow_upward : Icons.arrow_downward);
+    final double currentSell = double.tryParse(card.sellRate) ?? 0;
+    final double prevSell = double.tryParse(card.previousSellRate) ?? 0;
+    final double sellChange = currentSell - prevSell;
+    final Color sellColor = sellChange == 0
+        ? Colors.grey.shade700
+        : (sellChange > 0 ? Colors.green.shade600 : Colors.red.shade600);
+    final IconData sellIcon = sellChange == 0
+        ? Icons.remove
+        : (sellChange > 0 ? Icons.arrow_upward : Icons.arrow_downward);
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+      elevation: 3,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: Colors.grey.shade300, width: 1),
+      ),
+      child: InkWell(
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) =>
+                  GraphsScreen(initialSeriesSymbol: card.apiSymbol),
+            ),
+          );
+        },
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              color: colorScheme.secondaryContainer.withOpacity(0.4),
+              child: Text(
+                card.title,
+                style: textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: colorScheme.onSecondaryContainer,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+            IntrinsicHeight(
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _buildRateColumn(
+                      'BUY',
+                      card.buyRate,
+                      buyChange,
+                      buyColor,
+                      buyIcon,
+                      currencyFormatter,
+                      changeFormatter,
+                      textTheme,
+                    ),
+                  ),
+                  const VerticalDivider(
+                    width: 1,
+                    thickness: 1,
+                    indent: 10,
+                    endIndent: 10,
+                  ),
+                  Expanded(
+                    child: _buildRateColumn(
+                      'SELL',
+                      card.sellRate,
+                      sellChange,
+                      sellColor,
+                      sellIcon,
+                      currencyFormatter,
+                      changeFormatter,
+                      textTheme,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1, thickness: 1),
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16.0,
+                vertical: 10.0,
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _buildHighLowStat(
+                    'Low',
+                    card.low,
+                    currencyFormatter,
+                    textTheme,
+                    Colors.red.shade800,
+                  ),
+                  _buildHighLowStat(
+                    'High',
+                    card.high,
+                    currencyFormatter,
+                    textTheme,
+                    Colors.green.shade800,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRateColumn(
+    String label,
+    String rate,
+    double change,
+    Color color,
+    IconData icon,
+    NumberFormat currencyFormatter,
+    NumberFormat changeFormatter,
+    TextTheme textTheme,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16.0),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            label,
+            style: textTheme.bodyMedium?.copyWith(color: Colors.black54),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            currencyFormatter.format(double.tryParse(rate) ?? 0),
+            style: textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: color, size: 16),
+              const SizedBox(width: 4),
+              Text(
+                changeFormatter.format(change),
+                style: textTheme.bodyMedium?.copyWith(
+                  color: color,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHighLowStat(
+    String label,
+    String value,
+    NumberFormat formatter,
+    TextTheme textTheme,
+    Color color,
+  ) {
+    return RichText(
+      text: TextSpan(
+        style: textTheme.bodyMedium?.copyWith(color: Colors.grey.shade700),
+        children: [
+          TextSpan(text: '$label: '),
+          TextSpan(
+            text: formatter.format(double.tryParse(value) ?? 0),
+            style: TextStyle(fontWeight: FontWeight.w600, color: color),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
+
