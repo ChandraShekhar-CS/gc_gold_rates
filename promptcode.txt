@@ -1,0 +1,41 @@
+$FilePaths = @(
+"C:\MyData\Flutter\flutter_application_1\android\app\src\debug\AndroidManifest.xml"
+"C:\MyData\Flutter\flutter_application_1\android\app\src\main\AndroidManifest.xml"
+"C:\MyData\Flutter\flutter_application_1\android\app\src\main\kotlin\com\example\flutter_application_1\MainActivity.kt"
+"C:\MyData\Flutter\flutter_application_1\android\app\src\main\kotlin\com\example\gc_gold_rates\MainActivity.kt"
+"C:\MyData\Flutter\flutter_application_1\android\app\src\main\kotlin\com\example\gc_gold_rates\RatesRepository.kt"
+"C:\MyData\Flutter\flutter_application_1\android\app\src\main\kotlin\com\example\gc_gold_rates\RatesWidgetProvider.kt"
+"C:\MyData\Flutter\flutter_application_1\android\app\src\main\res\anim\rotate_refresh.xml"
+"C:\MyData\Flutter\flutter_application_1\android\app\src\main\res\drawable\ic_refresh.xml"
+"C:\MyData\Flutter\flutter_application_1\android\app\src\main\res\drawable\launch_background.xml"
+"C:\MyData\Flutter\flutter_application_1\android\app\src\main\res\drawable\rotating_refresh.xml"
+"C:\MyData\Flutter\flutter_application_1\android\app\src\main\res\drawable\widget_background.xml"
+"C:\MyData\Flutter\flutter_application_1\android\app\src\main\res\drawable-v21\launch_background.xml"
+"C:\MyData\Flutter\flutter_application_1\android\app\src\main\res\layout\rates_update_animation.xml"
+"C:\MyData\Flutter\flutter_application_1\android\app\src\main\res\layout\rates_widget_layout.xml"
+"C:\MyData\Flutter\flutter_application_1\android\app\src\main\res\values\styles.xml"
+"C:\MyData\Flutter\flutter_application_1\android\app\src\main\res\values-night\styles.xml"
+"C:\MyData\Flutter\flutter_application_1\android\app\src\main\res\xml\rates_widget_info.xml"
+"C:\MyData\Flutter\flutter_application_1\android\app\src\profile\AndroidManifest.xml"
+)
+
+$OutputFilePath = "C:\MyData\Flutter\flutter_application_1\prompt.txt"
+
+$OutputContent = ""
+
+foreach ($FilePath in $FilePaths) {
+    if (Test-Path -Path $FilePath -PathType Leaf) {
+        $AbsolutePath = (Resolve-Path $FilePath).Path
+        $FileContent = Get-Content -Path $FilePath -Raw
+        
+        $OutputContent += "Path: $AbsolutePath`r`n"
+        $OutputContent += "Content:`r`n$FileContent`r`n`r`n"
+    }
+    else {
+        Write-Warning "File not found: $FilePath"
+    }
+}
+
+Set-Content -Path $OutputFilePath -Value $OutputContent
+
+Write-Output "Successfully processed files to: $OutputFilePath"
