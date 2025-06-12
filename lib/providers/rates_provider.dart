@@ -152,7 +152,7 @@ class RatesProvider with ChangeNotifier {
 
         // --- ADDED FOR WIDGET ---
         // After successfully updating all cards, send data to the home widget
-        updateHomeWidget(goldCardForWidget, silverCardForWidget);
+        // updateHomeWidget(goldCardForWidget, silverCardForWidget);
         // -------------------------
 
       } else {
