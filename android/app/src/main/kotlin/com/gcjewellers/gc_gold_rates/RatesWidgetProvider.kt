@@ -1,4 +1,4 @@
-package com.example.flutter_application_1
+package com.gcjewellers.rateswidget
 
 import android.app.AlarmManager
 import android.app.PendingIntent

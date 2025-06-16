@@ -1,4 +1,4 @@
-package com.example.flutter_application_1
+package com.gcjewellers.rateswidget
 
 import java.io.BufferedReader
 import java.io.InputStreamReader
