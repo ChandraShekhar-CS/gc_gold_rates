@@ -5,7 +5,7 @@
     <!-- Required to schedule updates for the widget on newer Android versions -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <application
-        android:label="flutter_application_1"
+        android:label="GC Gold Rate"
         android:name="${applicationName}"
         android:icon="@mipmap/launcher_icon">
         <activity
