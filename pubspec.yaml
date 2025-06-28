@@ -31,3 +31,10 @@ flutter_launcher_icons:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/animations/bell_static.png
+    - assets/animations/chart_static.png  
+    - assets/animations/home_static.png
+    - assets/animations/bell_icon.gif
+    - assets/animations/chart_icon.gif
+    - assets/animations/home_icon.gif
