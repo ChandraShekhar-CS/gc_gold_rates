@@ -144,7 +144,6 @@ class _GraphsScreenState extends State<GraphsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Rate Trends Graph'),
         backgroundColor: Theme.of(context).colorScheme.surfaceVariant,
       ),
       body: ListView(
