@@ -143,9 +143,6 @@ class _GraphsScreenState extends State<GraphsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.surfaceVariant,
-      ),
       body: ListView(
         padding: const EdgeInsets.all(16.0),
         children: [

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/rates_provider.dart';
 import '../widgets/rate_card.dart';
 import 'graphs_screen.dart';
+import 'alert_management_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -163,47 +164,7 @@ class _MainScreenState extends State<MainScreen>
   }
 
   Widget _buildAlertsPage() {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.notifications_outlined,
-            size: 100,
-            color: Colors.grey,
-          ),
-          SizedBox(height: 20),
-          Text(
-            'Price Alerts',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey,
-            ),
-          ),
-          SizedBox(height: 10),
-          Text(
-            'Coming Soon!',
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.grey,
-            ),
-          ),
-          SizedBox(height: 20),
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: 40),
-            child: Text(
-              'Set up custom alerts to get notified when gold and silver prices reach your target levels.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+    return const AlertManagementScreen();
   }
 }
 
