@@ -6,6 +6,7 @@ import 'package:home_widget/home_widget.dart';
 import 'package:intl/intl.dart';
 import '../models/rate_card.dart';
 import '../services/api_service.dart';
+
 void updateHomeWidget(RateCard? goldCard, RateCard? silverCard) {
   final formattedTime = DateFormat('hh:mm a').format(DateTime.now());
   HomeWidget.saveWidgetData<String>(
@@ -23,12 +24,15 @@ void updateHomeWidget(RateCard? goldCard, RateCard? silverCard) {
     iOSName: 'RatesWidget',
   );
 }
+
 class RatesProvider with ChangeNotifier {
   final ApiService _apiService = ApiService();
   List<RateCard> rateCards = [];
   bool isLoading = false;
   String? errorMessage;
   Timer? _timer;
+  bool _isInitialized = false; // Flag to prevent multiple initializations
+
   final List<Map<String, dynamic>> _cardConfigs = [
     {'title': 'Gold 995', 'uniqueId': 0, 'apiSymbol': 'gold'},
     {'title': 'Gold Future', 'uniqueId': 2, 'apiSymbol': 'goldfuture'},
@@ -39,15 +43,25 @@ class RatesProvider with ChangeNotifier {
     {'title': 'Gold / Refine', 'uniqueId': 7, 'apiSymbol': 'goldrefine'},
     {'title': 'Gold / RTGS', 'uniqueId': 8, 'apiSymbol': 'goldrtgs'},
   ];
-  RatesProvider() {
-    _initializeCards();
+
+  // Constructor is now empty of any heavy work.
+  RatesProvider();
+
+  /// Initializes the provider by loading card order and fetching initial rates.
+  Future<void> initializeAndFetch() async {
+    // This check ensures this logic only runs once.
+    if (_isInitialized) return;
+
+    await _initializeCards();
+    // Start the auto-refresh timer only after the initial setup is complete.
     startAutoRefresh();
+    _isInitialized = true;
   }
-  void _initializeCards() async {
+
+  Future<void> _initializeCards() async {
     final prefs = await SharedPreferences.getInstance();
     List<String>? savedOrderIds = prefs.getStringList('cardOrder');
-    List<int> order =
-        savedOrderIds?.map(int.parse).toList() ??
+    List<int> order = savedOrderIds?.map(int.parse).toList() ??
         _cardConfigs.map<int>((c) => c['uniqueId']).toList();
     Map<int, Map<String, dynamic>> configMap = {
       for (var c in _cardConfigs) c['uniqueId']: c,
@@ -61,8 +75,10 @@ class RatesProvider with ChangeNotifier {
           ),
         )
         .toList();
+    // Await the first fetch of rates.
     await fetchRates();
   }
+
   Future<void> fetchRates() async {
     if (isLoading) return;
     isLoading = true;
@@ -115,12 +131,14 @@ class RatesProvider with ChangeNotifier {
       notifyListeners();
     }
   }
+
   void startAutoRefresh() {
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       fetchRates();
     });
   }
+
   void reorderCards(int oldIndex, int newIndex) async {
     if (oldIndex < newIndex) {
       newIndex -= 1;
@@ -128,15 +146,20 @@ class RatesProvider with ChangeNotifier {
     final RateCard item = rateCards.removeAt(oldIndex);
     rateCards.insert(newIndex, item);
     final prefs = await SharedPreferences.getInstance();
-    List<String> newOrderIds = rateCards
-        .map((c) => c.uniqueId.toString())
-        .toList();
+    List<String> newOrderIds =
+        rateCards.map((c) => c.uniqueId.toString()).toList();
     await prefs.setStringList('cardOrder', newOrderIds);
     notifyListeners();
   }
+
   @override
   void dispose() {
     _timer?.cancel();
     super.dispose();
   }
 }
+
+
+
+
+

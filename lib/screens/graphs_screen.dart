@@ -53,6 +53,7 @@ class _GraphsScreenState extends State<GraphsScreen> {
     "goldrefine",
     "goldrtgs",
   ];
+
   @override
   void initState() {
     super.initState();
@@ -62,9 +63,10 @@ class _GraphsScreenState extends State<GraphsScreen> {
     }
     _zoomPanBehavior = ZoomPanBehavior(
       enablePinching: true,
-      enablePanning: true,
-      enableSelectionZooming: true,
+      enablePanning: false,
+      enableSelectionZooming: false,
       enableMouseWheelZooming: true,
+      enableDoubleTapZooming: true,
     );
     _fetchData();
   }
@@ -388,10 +390,81 @@ class _GraphsScreenState extends State<GraphsScreen> {
           yValueMapper: (_ChartData data, _) => data.y,
           name: _selectedSeries.toUpperCase(),
           color: Theme.of(context).colorScheme.primary,
+          width: 2.5,
         ),
       ],
-      tooltipBehavior: TooltipBehavior(enable: true),
       zoomPanBehavior: _zoomPanBehavior,
+      trackballBehavior: TrackballBehavior(
+        enable: true,
+        activationMode: ActivationMode.singleTap,
+        lineType: TrackballLineType.vertical,
+        lineColor: Theme.of(context).colorScheme.primary.withOpacity(0.7),
+        lineWidth: 2,
+        markerSettings: const TrackballMarkerSettings(
+          markerVisibility: TrackballVisibilityMode.visible,
+          height: 8,
+          width: 8,
+          borderWidth: 2,
+        ),
+        tooltipSettings: const InteractiveTooltip(
+          enable: false,
+        ),
+        builder: (BuildContext context, TrackballDetails trackballDetails) {
+          final point = trackballDetails.point;
+
+          if (point == null || point.y == null) {
+            return const SizedBox.shrink();
+          }
+
+          final currencyFormatter = NumberFormat.currency(
+            locale: 'en_IN',
+            symbol: '₹ ',
+            decimalDigits: 2,
+          );
+          final String formattedRate = currencyFormatter.format(point.y);
+          final String formattedDate =
+              DateFormat('dd MMM, hh:mm a').format(point.x as DateTime);
+
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.black87,
+              borderRadius: BorderRadius.circular(8),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black26,
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  formattedRate,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  formattedDate,
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+      onTrackballPositionChanging: (TrackballArgs args) {
+        args.chartPointInfo.header = '';
+      },
     );
   }
 

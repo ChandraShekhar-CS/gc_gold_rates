@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "851904795750",
+    "project_id": "gold-silver-rates-app-by-gc",
+    "storage_bucket": "gold-silver-rates-app-by-gc.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:851904795750:android:435dc3a51cadc5892289a7",
+        "android_client_info": {
+          "package_name": "com.gcjewellers.rateswidget"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBdsgaE-nyHdsk_XAUKf09Ck6xlxuKQLHs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

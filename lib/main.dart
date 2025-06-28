@@ -1,15 +1,23 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'firebase_options.dart';
 import 'providers/rates_provider.dart';
-import 'screens/main_screen.dart';
+import 'screens/initialization_screen.dart';
 import 'screens/graphs_screen.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
   runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
+  
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
@@ -18,11 +26,13 @@ class MyApp extends StatelessWidget {
         title: 'GC Gold Rates',
         theme: ThemeData(
           useMaterial3: true,
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.yellow),
+          colorScheme: ColorScheme.fromSeed(seedColor: Colors.amber),
         ),
         debugShowCheckedModeBanner: false,
-        home: const MainScreen(),
-        routes: {'/graphs': (context) => const GraphsScreen()},
+        home: const InitializationScreen(),
+        routes: {
+          '/graphs': (context) => const GraphsScreen(),
+        },
       ),
     );
   }
