@@ -31,7 +31,8 @@ class RatesProvider with ChangeNotifier {
   bool isLoading = false;
   String? errorMessage;
   Timer? _timer;
-  bool _isInitialized = false; // Flag to prevent multiple initializations
+  bool _isInitialized = false;
+  bool _disposed = false;
 
   final List<Map<String, dynamic>> _cardConfigs = [
     {'title': 'Gold 995', 'uniqueId': 0, 'apiSymbol': 'gold'},
@@ -44,28 +45,38 @@ class RatesProvider with ChangeNotifier {
     {'title': 'Gold / RTGS', 'uniqueId': 8, 'apiSymbol': 'goldrtgs'},
   ];
 
-  // Constructor is now empty of any heavy work.
   RatesProvider();
 
-  /// Initializes the provider by loading card order and fetching initial rates.
   Future<void> initializeAndFetch() async {
-    // This check ensures this logic only runs once.
-    if (_isInitialized) return;
+    if (_isInitialized || _disposed) return;
 
-    await _initializeCards();
-    // Start the auto-refresh timer only after the initial setup is complete.
-    startAutoRefresh();
-    _isInitialized = true;
+    try {
+      await _initializeCards();
+      startAutoRefresh();
+      _isInitialized = true;
+    } catch (e) {
+      developer.log(
+        'Error during initialization: $e',
+        name: 'RatesProvider',
+        error: e,
+      );
+      rethrow;
+    }
   }
 
   Future<void> _initializeCards() async {
+    if (_disposed) return;
+
     final prefs = await SharedPreferences.getInstance();
     List<String>? savedOrderIds = prefs.getStringList('cardOrder');
-    List<int> order = savedOrderIds?.map(int.parse).toList() ??
+    List<int> order =
+        savedOrderIds?.map(int.parse).toList() ??
         _cardConfigs.map<int>((c) => c['uniqueId']).toList();
+
     Map<int, Map<String, dynamic>> configMap = {
       for (var c in _cardConfigs) c['uniqueId']: c,
     };
+
     rateCards = order
         .map(
           (id) => RateCard(
@@ -75,30 +86,38 @@ class RatesProvider with ChangeNotifier {
           ),
         )
         .toList();
-    // Await the first fetch of rates.
+
     await fetchRates();
   }
 
   Future<void> fetchRates() async {
-    if (isLoading) return;
+    if (isLoading || _disposed) return;
+
     isLoading = true;
-    if (rateCards.isNotEmpty && rateCards.first.buyRate == "0.0") {
+    if (rateCards.isNotEmpty &&
+        rateCards.first.buyRate == "0.0" &&
+        !_disposed) {
       notifyListeners();
     }
+
     try {
       final data = await _apiService.fetchLiveRates();
+      if (_disposed) return;
+
       Map<String, dynamic>? ratesData;
       if (data.containsKey('rates') && data['rates'] is Map<String, dynamic>) {
         ratesData = data['rates'] as Map<String, dynamic>;
       } else if (data.isNotEmpty) {
         ratesData = data;
       }
-      if (ratesData != null) {
+
+      if (ratesData != null && !_disposed) {
         for (var card in rateCards) {
           if (ratesData.containsKey(card.apiSymbol)) {
             final rateInfo = ratesData[card.apiSymbol];
             card.previousBuyRate = card.buyRate;
             card.previousSellRate = card.sellRate;
+
             if (rateInfo != null) {
               if (rateInfo is Map<String, dynamic>) {
                 card.buyRate = rateInfo['buy']?.toString() ?? "0.0";
@@ -116,50 +135,95 @@ class RatesProvider with ChangeNotifier {
           }
         }
         errorMessage = null;
-      } else {
+
+        // Update home widget with gold and silver data
+        final goldCard = rateCards
+            .where((card) => card.apiSymbol == 'gold')
+            .firstOrNull;
+        final silverCard = rateCards
+            .where((card) => card.apiSymbol == 'silverfuture')
+            .firstOrNull;
+        updateHomeWidget(goldCard, silverCard);
+      } else if (!_disposed) {
         throw Exception('Could not parse rates from the API response.');
       }
     } catch (e) {
-      errorMessage = e.toString();
-      developer.log(
-        'Error fetching rates: $e',
-        name: 'RatesProvider',
-        error: e,
-      );
+      if (!_disposed) {
+        errorMessage = e.toString();
+        developer.log(
+          'Error fetching rates: $e',
+          name: 'RatesProvider',
+          error: e,
+        );
+      }
     } finally {
-      isLoading = false;
-      notifyListeners();
+      if (!_disposed) {
+        isLoading = false;
+        notifyListeners();
+      }
     }
   }
 
   void startAutoRefresh() {
+    if (_disposed) return;
+
     _timer?.cancel();
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      fetchRates();
+    // Reduced frequency from 1 second to 30 seconds for better performance
+    _timer = Timer.periodic(const Duration(seconds: 30), (timer) {
+      if (!_disposed) {
+        fetchRates();
+      } else {
+        timer.cancel();
+      }
     });
   }
 
-  void reorderCards(int oldIndex, int newIndex) async {
+  void stopAutoRefresh() {
+    _timer?.cancel();
+    _timer = null;
+  }
+
+  Future<void> reorderCards(int oldIndex, int newIndex) async {
+    if (_disposed) return;
+
     if (oldIndex < newIndex) {
       newIndex -= 1;
     }
+
     final RateCard item = rateCards.removeAt(oldIndex);
     rateCards.insert(newIndex, item);
-    final prefs = await SharedPreferences.getInstance();
-    List<String> newOrderIds =
-        rateCards.map((c) => c.uniqueId.toString()).toList();
-    await prefs.setStringList('cardOrder', newOrderIds);
-    notifyListeners();
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      List<String> newOrderIds = rateCards
+          .map((c) => c.uniqueId.toString())
+          .toList();
+      await prefs.setStringList('cardOrder', newOrderIds);
+
+      if (!_disposed) {
+        notifyListeners();
+      }
+    } catch (e) {
+      developer.log(
+        'Error saving card order: $e',
+        name: 'RatesProvider',
+        error: e,
+      );
+    }
+  }
+
+  @override
+  void notifyListeners() {
+    if (!_disposed) {
+      super.notifyListeners();
+    }
   }
 
   @override
   void dispose() {
+    _disposed = true;
     _timer?.cancel();
+    _timer = null;
     super.dispose();
   }
 }
-
-
-
-
-

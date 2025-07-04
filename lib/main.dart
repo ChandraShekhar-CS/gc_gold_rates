@@ -3,7 +3,8 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:provider/provider.dart';
 import 'providers/rates_provider.dart';
-import 'providers/alert_provider.dart'; 
+import 'providers/alert_provider.dart';
+import 'providers/theme_provider.dart' as custom_theme;
 import 'screens/initialization_screen.dart';
 import 'services/notification_service.dart';
 
@@ -29,18 +30,33 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => custom_theme.ThemeProvider()),
         ChangeNotifierProvider(create: (_) => RatesProvider()),
         ChangeNotifierProvider(create: (_) => AlertProvider()),
       ],
-      child: MaterialApp(
-        title: 'GC Gold Rates',
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.amber),
-          useMaterial3: true,
-        ),
-        home: const InitializationScreen(),
-        debugShowCheckedModeBanner: false,
+      child: Consumer<custom_theme.ThemeProvider>(
+        builder: (context, themeProvider, child) {
+          return MaterialApp(
+            title: 'GC Gold Rates',
+            theme: themeProvider.lightTheme,
+            darkTheme: themeProvider.darkTheme,
+            themeMode: _getFlutterThemeMode(themeProvider.themeMode),
+            home: const InitializationScreen(),
+            debugShowCheckedModeBanner: false,
+          );
+        },
       ),
     );
+  }
+
+  ThemeMode _getFlutterThemeMode(custom_theme.ThemeMode customThemeMode) {
+    switch (customThemeMode) {
+      case custom_theme.ThemeMode.light:
+        return ThemeMode.light;
+      case custom_theme.ThemeMode.dark:
+        return ThemeMode.dark;
+      case custom_theme.ThemeMode.system:
+        return ThemeMode.system;
+    }
   }
 }

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/rates_provider.dart';
+import '../providers/theme_provider.dart' as custom_theme;
 import '../services/notification_service.dart';
+import '../widgets/cool_loader.dart';
 import 'main_screen.dart';
 
 class InitializationScreen extends StatefulWidget {
@@ -21,16 +23,27 @@ class _InitializationScreenState extends State<InitializationScreen> {
   }
 
   Future<void> _initializeApp() async {
-    if (mounted) {
-      setState(() {
-        _error = null;
-      });
-    }
+    if (!mounted) return;
+
+    setState(() {
+      _error = null;
+    });
 
     try {
-      await NotificationService().initNotifications();
-      await context.read<RatesProvider>().initializeAndFetch();
+      // Initialize theme first
+      final themeProvider = context.read<custom_theme.ThemeProvider>();
+      await themeProvider.initializeTheme();
 
+      // Initialize notifications
+      await NotificationService().initNotifications();
+
+      // Initialize and fetch rates
+      if (mounted) {
+        final ratesProvider = context.read<RatesProvider>();
+        await ratesProvider.initializeAndFetch();
+      }
+
+      // Navigate to main screen
       if (mounted) {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (context) => const MainScreen()),
@@ -50,21 +63,9 @@ class _InitializationScreenState extends State<InitializationScreen> {
     return Scaffold(
       body: Center(
         child: _error == null
-            ? Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(
-                    color: Colors.amber.shade700,
-                  ),
-                  const SizedBox(height: 20),
-                  const Text(
-                    'Loading GC Gold Rates...',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
+            ? const CoolLoader(
+                loadingText: 'Loading GC Gold Rates...',
+                size: 140.0,
               )
             : Padding(
                 padding: const EdgeInsets.all(24.0),
@@ -94,10 +95,12 @@ class _InitializationScreenState extends State<InitializationScreen> {
                       icon: const Icon(Icons.refresh),
                       label: const Text('Retry'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.amber.shade700,
+                        backgroundColor: Theme.of(context).colorScheme.primary,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 24, vertical: 12),
+                          horizontal: 24,
+                          vertical: 12,
+                        ),
                       ),
                     ),
                   ],

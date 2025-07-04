@@ -43,6 +43,8 @@ class _GraphsScreenState extends State<GraphsScreen> {
   DateTime? _customEndDate;
   final ApiService _apiService = ApiService();
   late ZoomPanBehavior _zoomPanBehavior;
+  bool _disposed = false;
+
   final List<String> _seriesOptions = const [
     "gold",
     "goldfuture",
@@ -68,20 +70,36 @@ class _GraphsScreenState extends State<GraphsScreen> {
       enableMouseWheelZooming: true,
       enableDoubleTapZooming: true,
     );
-    _fetchData();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && !_disposed) {
+        _fetchData();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
   }
 
   Future<void> _fetchData() async {
+    if (_disposed || !mounted) return;
+
     setState(() {
       _isLoading = true;
       _error = null;
     });
+
     try {
       final queryParams = _buildApiQuery();
       final data = await _apiService.fetchGraphData(
         _selectedSeries,
         queryParams,
       );
+
+      if (_disposed || !mounted) return;
+
       setState(() {
         _apiResponse = ApiResponse.fromJson(data, _selectedSeries);
         _isLoading = false;
@@ -93,6 +111,9 @@ class _GraphsScreenState extends State<GraphsScreen> {
         error: e,
         stackTrace: stacktrace,
       );
+
+      if (_disposed || !mounted) return;
+
       setState(() {
         _error = e.toString();
         _isLoading = false;
@@ -140,8 +161,18 @@ class _GraphsScreenState extends State<GraphsScreen> {
     return '?startDate=$startDate&endDate=$endDate&resolution=$resolution';
   }
 
+  void _safeSetState(VoidCallback fn) {
+    if (mounted && !_disposed) {
+      setState(fn);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (_disposed) {
+      return const SizedBox.shrink();
+    }
+
     return Scaffold(
       body: ListView(
         padding: const EdgeInsets.all(16.0),
@@ -176,8 +207,8 @@ class _GraphsScreenState extends State<GraphsScreen> {
         );
       }).toList(),
       onChanged: (value) {
-        if (value != null) {
-          setState(() => _selectedSeries = value);
+        if (value != null && mounted && !_disposed) {
+          _safeSetState(() => _selectedSeries = value);
           _fetchData();
         }
       },
@@ -190,9 +221,11 @@ class _GraphsScreenState extends State<GraphsScreen> {
       child: ToggleButtons(
         isSelected: [_isBuySelected, !_isBuySelected],
         onPressed: (index) {
-          if ((index == 0 && !_isBuySelected) ||
-              (index == 1 && _isBuySelected)) {
-            setState(() => _isBuySelected = index == 0);
+          if (!_disposed &&
+              mounted &&
+              ((index == 0 && !_isBuySelected) ||
+                  (index == 1 && _isBuySelected))) {
+            _safeSetState(() => _isBuySelected = index == 0);
           }
         },
         borderRadius: BorderRadius.circular(12),
@@ -239,11 +272,13 @@ class _GraphsScreenState extends State<GraphsScreen> {
               .map((range) => _selectedTimeRange == range)
               .toList(),
           onPressed: (index) {
+            if (_disposed || !mounted) return;
+
             final selectedRange = TimeRange.values[index];
             if (selectedRange == TimeRange.custom) {
               _showCustomDatePicker();
             } else {
-              setState(() => _selectedTimeRange = selectedRange);
+              _safeSetState(() => _selectedTimeRange = selectedRange);
               _fetchData();
             }
           },
@@ -267,6 +302,8 @@ class _GraphsScreenState extends State<GraphsScreen> {
   }
 
   void _showCustomDatePicker() async {
+    if (_disposed || !mounted) return;
+
     final now = DateTime.now();
     final pickedStartDate = await showDatePicker(
       context: context,
@@ -274,15 +311,19 @@ class _GraphsScreenState extends State<GraphsScreen> {
       firstDate: DateTime(2020),
       lastDate: now,
     );
-    if (pickedStartDate == null) return;
+
+    if (pickedStartDate == null || _disposed || !mounted) return;
+
     final pickedEndDate = await showDatePicker(
       context: context,
       initialDate: _customEndDate ?? now,
       firstDate: pickedStartDate,
       lastDate: now,
     );
-    if (pickedEndDate == null) return;
-    setState(() {
+
+    if (pickedEndDate == null || _disposed || !mounted) return;
+
+    _safeSetState(() {
       _selectedTimeRange = TimeRange.custom;
       _customStartDate = pickedStartDate;
       _customEndDate = pickedEndDate.add(const Duration(days: 1));
@@ -291,7 +332,8 @@ class _GraphsScreenState extends State<GraphsScreen> {
   }
 
   Widget _buildHighLowDisplay() {
-    if (_apiResponse?.stats == null) return const SizedBox.shrink();
+    if (_apiResponse?.stats == null || _disposed)
+      return const SizedBox.shrink();
     final stats = _apiResponse!.stats!;
     final price = _isBuySelected ? stats.buy : stats.sell;
     final formatter = NumberFormat.currency(
@@ -366,6 +408,8 @@ class _GraphsScreenState extends State<GraphsScreen> {
   }
 
   Widget _buildChart() {
+    if (_disposed) return const SizedBox.shrink();
+
     return SfCartesianChart(
       primaryXAxis: DateTimeAxis(
         edgeLabelPlacement: EdgeLabelPlacement.shift,
@@ -402,9 +446,7 @@ class _GraphsScreenState extends State<GraphsScreen> {
           width: 8,
           borderWidth: 2,
         ),
-        tooltipSettings: const InteractiveTooltip(
-          enable: false,
-        ),
+        tooltipSettings: const InteractiveTooltip(enable: false),
         builder: (BuildContext context, TrackballDetails trackballDetails) {
           final point = trackballDetails.point;
 
@@ -418,8 +460,9 @@ class _GraphsScreenState extends State<GraphsScreen> {
             decimalDigits: 2,
           );
           final String formattedRate = currencyFormatter.format(point.y);
-          final String formattedDate =
-              DateFormat('dd MMM, hh:mm a').format(point.x as DateTime);
+          final String formattedDate = DateFormat(
+            'dd MMM, hh:mm a',
+          ).format(point.x as DateTime);
 
           return Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -448,10 +491,7 @@ class _GraphsScreenState extends State<GraphsScreen> {
                 const SizedBox(height: 2),
                 Text(
                   formattedDate,
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 11,
-                  ),
+                  style: const TextStyle(color: Colors.white70, fontSize: 11),
                 ),
               ],
             ),
@@ -465,7 +505,7 @@ class _GraphsScreenState extends State<GraphsScreen> {
   }
 
   List<_ChartData> _getChartData() {
-    if (_apiResponse == null) return [];
+    if (_apiResponse == null || _disposed) return [];
     final data = <_ChartData>[];
     for (final dataItem in _apiResponse!.data) {
       final value = _isBuySelected ? dataItem.buy : dataItem.sell;

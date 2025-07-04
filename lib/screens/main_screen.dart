@@ -4,6 +4,7 @@ import '../providers/rates_provider.dart';
 import '../widgets/rate_card.dart';
 import 'graphs_screen.dart';
 import 'alert_management_screen.dart';
+import 'settings_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -59,6 +60,8 @@ class _MainScreenState extends State<MainScreen>
         return 'Charts';
       case 2:
         return 'Price Alerts';
+      case 3:
+        return 'Settings';
       default:
         return 'GC Gold Rates';
     }
@@ -69,8 +72,8 @@ class _MainScreenState extends State<MainScreen>
     return Scaffold(
       appBar: AppBar(
         title: Text(_getAppBarTitle()),
-        backgroundColor: Colors.amber.shade700,
-        foregroundColor: Colors.white,
+        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
+        foregroundColor: Theme.of(context).appBarTheme.foregroundColor,
         elevation: 0,
         automaticallyImplyLeading: false,
       ),
@@ -87,6 +90,7 @@ class _MainScreenState extends State<MainScreen>
             _buildLiveRatesPage(),
             _buildGraphsPage(),
             _buildAlertsPage(),
+            _buildSettingsPage(),
           ],
         ),
       ),
@@ -94,9 +98,9 @@ class _MainScreenState extends State<MainScreen>
         type: BottomNavigationBarType.fixed,
         currentIndex: _currentIndex,
         onTap: _onBottomNavTap,
-        selectedItemColor: Colors.amber.shade700,
-        unselectedItemColor: Colors.grey.shade600,
-        backgroundColor: Colors.white,
+        selectedItemColor: Theme.of(context).colorScheme.primary,
+        unselectedItemColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+        backgroundColor: Theme.of(context).colorScheme.surface,
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.home_outlined),
@@ -112,6 +116,11 @@ class _MainScreenState extends State<MainScreen>
             icon: Icon(Icons.notifications_outlined),
             activeIcon: Icon(Icons.notifications),
             label: 'Alerts',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings_outlined),
+            activeIcon: Icon(Icons.settings),
+            label: 'Settings',
           ),
         ],
       ),
@@ -166,6 +175,10 @@ class _MainScreenState extends State<MainScreen>
   Widget _buildAlertsPage() {
     return const AlertManagementScreen();
   }
+
+  Widget _buildSettingsPage() {
+    return const SettingsScreenContent();
+  }
 }
 
 class GraphsScreenContent extends StatelessWidget {
@@ -174,5 +187,14 @@ class GraphsScreenContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const GraphsScreen();
+  }
+}
+
+class SettingsScreenContent extends StatelessWidget {
+  const SettingsScreenContent({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const SettingsScreen();
   }
 }
