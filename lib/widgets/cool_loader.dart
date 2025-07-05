@@ -5,7 +5,7 @@ class CoolLoader extends StatefulWidget {
   final String? loadingText;
   final Color? primaryColor;
   final double size;
-  
+
   const CoolLoader({
     super.key,
     this.loadingText,
@@ -17,76 +17,48 @@ class CoolLoader extends StatefulWidget {
   State<CoolLoader> createState() => _CoolLoaderState();
 }
 
-class _CoolLoaderState extends State<CoolLoader>
-    with TickerProviderStateMixin {
+class _CoolLoaderState extends State<CoolLoader> with TickerProviderStateMixin {
   late AnimationController _rotationController;
-  late AnimationController _scaleController;
-  late AnimationController _pulseController;
+  late AnimationController _fadeController;
   late Animation<double> _rotationAnimation;
-  late Animation<double> _scaleAnimation;
-  late Animation<double> _pulseAnimation;
+  late Animation<double> _fadeAnimation;
 
   @override
   void initState() {
     super.initState();
-    
-    // Rotation animation
+
     _rotationController = AnimationController(
-      duration: const Duration(seconds: 3),
+      duration: const Duration(seconds: 2),
       vsync: this,
     );
-    _rotationAnimation = Tween<double>(
-      begin: 0,
-      end: 2 * math.pi,
-    ).animate(CurvedAnimation(
-      parent: _rotationController,
-      curve: Curves.linear,
-    ));
+    _rotationAnimation = Tween<double>(begin: 0, end: 2 * math.pi).animate(
+      CurvedAnimation(parent: _rotationController, curve: Curves.easeInOut),
+    );
 
-    // Scale animation for gold coins
-    _scaleController = AnimationController(
+    _fadeController = AnimationController(
       duration: const Duration(milliseconds: 1500),
       vsync: this,
     );
-    _scaleAnimation = Tween<double>(
-      begin: 0.8,
-      end: 1.2,
-    ).animate(CurvedAnimation(
-      parent: _scaleController,
-      curve: Curves.easeInOut,
-    ));
-
-    // Pulse animation for outer ring
-    _pulseController = AnimationController(
-      duration: const Duration(milliseconds: 2000),
-      vsync: this,
+    _fadeAnimation = Tween<double>(begin: 0.4, end: 1.0).animate(
+      CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut),
     );
-    _pulseAnimation = Tween<double>(
-      begin: 0.9,
-      end: 1.1,
-    ).animate(CurvedAnimation(
-      parent: _pulseController,
-      curve: Curves.easeInOut,
-    ));
 
-    // Start animations
     _rotationController.repeat();
-    _scaleController.repeat(reverse: true);
-    _pulseController.repeat(reverse: true);
+    _fadeController.repeat(reverse: true);
   }
 
   @override
   void dispose() {
     _rotationController.dispose();
-    _scaleController.dispose();
-    _pulseController.dispose();
+    _fadeController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final primaryColor = widget.primaryColor ?? Colors.amber.shade700;
-    
+    final primaryColor =
+        widget.primaryColor ?? Theme.of(context).colorScheme.primary;
+
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -96,121 +68,57 @@ class _CoolLoaderState extends State<CoolLoader>
           child: Stack(
             alignment: Alignment.center,
             children: [
-              // Outer pulsing ring
-              AnimatedBuilder(
-                animation: _pulseAnimation,
-                builder: (context, child) {
-                  return Transform.scale(
-                    scale: _pulseAnimation.value,
-                    child: Container(
-                      width: widget.size,
-                      height: widget.size,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: primaryColor.withOpacity(0.3),
-                          width: 2,
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-              
-              // Middle ring
+              // Outer circle
               Container(
-                width: widget.size * 0.8,
-                height: widget.size * 0.8,
+                width: widget.size,
+                height: widget.size,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(
-                    color: primaryColor.withOpacity(0.5),
-                    width: 1.5,
-                  ),
+                  color: primaryColor.withOpacity(0.1),
                 ),
               ),
-              
-              // Rotating gold coins
+
+              // Rotating arcs
               AnimatedBuilder(
                 animation: _rotationAnimation,
                 builder: (context, child) {
                   return Transform.rotate(
                     angle: _rotationAnimation.value,
-                    child: SizedBox(
-                      width: widget.size * 0.7,
-                      height: widget.size * 0.7,
-                      child: Stack(
-                        children: List.generate(6, (index) {
-                          final angle = (index * 60) * math.pi / 180;
-                          final radius = widget.size * 0.25;
-                          return Positioned(
-                            left: widget.size * 0.35 + radius * math.cos(angle) - 8,
-                            top: widget.size * 0.35 + radius * math.sin(angle) - 8,
-                            child: AnimatedBuilder(
-                              animation: _scaleAnimation,
-                              builder: (context, child) {
-                                return Transform.scale(
-                                  scale: _scaleAnimation.value * (0.8 + index * 0.05),
-                                  child: Container(
-                                    width: 16,
-                                    height: 16,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      gradient: RadialGradient(
-                                        colors: [
-                                          primaryColor,
-                                          primaryColor.withOpacity(0.7),
-                                        ],
-                                      ),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: primaryColor.withOpacity(0.3),
-                                          blurRadius: 4,
-                                          spreadRadius: 1,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          );
-                        }),
+                    child: CustomPaint(
+                      size: Size(widget.size * 0.8, widget.size * 0.8),
+                      painter: LoaderPainter(
+                        color: primaryColor,
+                        progress: _rotationAnimation.value,
                       ),
                     ),
                   );
                 },
               ),
-              
-              // Center gold coin
+
+              // Center content
               AnimatedBuilder(
-                animation: _scaleAnimation,
+                animation: _fadeAnimation,
                 builder: (context, child) {
-                  return Transform.scale(
-                    scale: _scaleAnimation.value,
+                  return Opacity(
+                    opacity: _fadeAnimation.value,
                     child: Container(
-                      width: 32,
-                      height: 32,
+                      width: widget.size * 0.4,
+                      height: widget.size * 0.4,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        gradient: RadialGradient(
-                          colors: [
-                            primaryColor,
-                            primaryColor.withOpacity(0.8),
-                          ],
-                        ),
+                        color: primaryColor,
                         boxShadow: [
                           BoxShadow(
-                            color: primaryColor.withOpacity(0.4),
+                            color: primaryColor.withOpacity(0.3),
                             blurRadius: 8,
                             spreadRadius: 2,
                           ),
                         ],
                       ),
-                      child: Icon(
-                        Icons.currency_rupee,
+                      child: const Icon(
+                        Icons.trending_up,
                         color: Colors.white,
-                        size: 20,
+                        size: 24,
                       ),
                     ),
                   );
@@ -219,65 +127,99 @@ class _CoolLoaderState extends State<CoolLoader>
             ],
           ),
         ),
-        
-        const SizedBox(height: 24),
-        
-        // Loading text with fade animation
+
+        const SizedBox(height: 32),
+
+        // Loading text
         AnimatedBuilder(
-          animation: _pulseAnimation,
+          animation: _fadeAnimation,
           builder: (context, child) {
             return Opacity(
-              opacity: 0.7 + (_pulseAnimation.value - 0.9) * 1.5,
+              opacity: _fadeAnimation.value,
               child: Text(
                 widget.loadingText ?? 'Loading GC Gold Rates...',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: Theme.of(context).textTheme.bodyLarge?.color,
-                  letterSpacing: 0.5,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 0.3,
                 ),
                 textAlign: TextAlign.center,
               ),
             );
           },
         ),
-        
-        const SizedBox(height: 12),
-        
-        // Subtitle with dots animation
-        _buildDotsAnimation(),
+
+        const SizedBox(height: 8),
+
+        // Progress dots
+        _buildProgressDots(primaryColor),
       ],
     );
   }
 
-  Widget _buildDotsAnimation() {
+  Widget _buildProgressDots(Color primaryColor) {
     return AnimatedBuilder(
       animation: _rotationController,
       builder: (context, child) {
-        final progress = _rotationController.value;
-        final dots = ['⬤', '⬤', '⬤'];
-        
         return Row(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: dots.asMap().entries.map((entry) {
-            final index = entry.key;
-            final dot = entry.value;
-            final opacity = (math.sin((progress * 2 * math.pi) + (index * math.pi / 3)) + 1) / 2;
-            
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 2),
-              child: Text(
-                dot,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: (widget.primaryColor ?? Colors.amber.shade700)
-                      .withOpacity(opacity * 0.8),
-                ),
+          children: List.generate(3, (index) {
+            final delay = index * 0.3;
+            final progress = (_rotationController.value + delay) % 1.0;
+            final opacity = (math.sin(progress * 2 * math.pi) + 1) / 2;
+
+            return Container(
+              margin: const EdgeInsets.symmetric(horizontal: 3),
+              width: 6,
+              height: 6,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: primaryColor.withOpacity(0.3 + opacity * 0.7),
               ),
             );
-          }).toList(),
+          }),
         );
       },
     );
+  }
+}
+
+class LoaderPainter extends CustomPainter {
+  final Color color;
+  final double progress;
+
+  LoaderPainter({required this.color, required this.progress});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 3.0
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2 - 4;
+
+    // Draw multiple arcs
+    for (int i = 0; i < 3; i++) {
+      final startAngle = (progress * 2 * math.pi) + (i * 2 * math.pi / 3);
+      final sweepAngle = math.pi / 2;
+      final opacity = 1.0 - (i * 0.3);
+
+      paint.color = color.withOpacity(opacity);
+
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius - (i * 8)),
+        startAngle,
+        sweepAngle,
+        false,
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(LoaderPainter oldDelegate) {
+    return oldDelegate.progress != progress;
   }
 }

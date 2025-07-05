@@ -16,6 +16,8 @@ class RateCardWidget extends StatelessWidget {
     final changeFormatter = NumberFormat("+#;-#", "en_IN");
     final textTheme = Theme.of(context).textTheme;
     final colorScheme = Theme.of(context).colorScheme;
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     final double currentBuy = double.tryParse(card.buyRate) ?? 0;
     final double prevBuy = double.tryParse(card.previousBuyRate) ?? 0;
     final double buyChange = currentBuy - prevBuy;
@@ -56,12 +58,17 @@ class RateCardWidget extends StatelessWidget {
           children: [
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              color: colorScheme.secondaryContainer.withOpacity(0.4),
+              color: isDarkMode
+                  ? const Color(0xFFFFBF78) // Dark gold header in dark mode
+                  : colorScheme.secondaryContainer.withOpacity(0.4),
               child: Text(
                 card.title,
                 style: textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.bold,
-                  color: colorScheme.onSecondaryContainer,
+                  color: isDarkMode
+                      ? Colors
+                            .white // White text in dark mode
+                      : colorScheme.onSecondaryContainer,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -79,6 +86,7 @@ class RateCardWidget extends StatelessWidget {
                       currencyFormatter,
                       changeFormatter,
                       textTheme,
+                      isDarkMode,
                     ),
                   ),
                   const VerticalDivider(
@@ -97,6 +105,7 @@ class RateCardWidget extends StatelessWidget {
                       currencyFormatter,
                       changeFormatter,
                       textTheme,
+                      isDarkMode,
                     ),
                   ),
                 ],
@@ -117,6 +126,7 @@ class RateCardWidget extends StatelessWidget {
                     currencyFormatter,
                     textTheme,
                     Colors.red.shade800,
+                    isDarkMode,
                   ),
                   _buildHighLowStat(
                     'High',
@@ -124,6 +134,7 @@ class RateCardWidget extends StatelessWidget {
                     currencyFormatter,
                     textTheme,
                     Colors.green.shade800,
+                    isDarkMode,
                   ),
                 ],
               ),
@@ -143,6 +154,7 @@ class RateCardWidget extends StatelessWidget {
     NumberFormat currencyFormatter,
     NumberFormat changeFormatter,
     TextTheme textTheme,
+    bool isDarkMode,
   ) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 16.0),
@@ -151,14 +163,16 @@ class RateCardWidget extends StatelessWidget {
         children: [
           Text(
             label,
-            style: textTheme.bodyMedium?.copyWith(color: Colors.black54),
+            style: textTheme.bodyMedium?.copyWith(
+              color: isDarkMode ? Colors.grey.shade400 : Colors.black54,
+            ),
           ),
           const SizedBox(height: 8),
           Text(
             currencyFormatter.format(double.tryParse(rate) ?? 0),
             style: textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.bold,
-              color: color,
+              color: isDarkMode ? Colors.white : color,
             ),
           ),
           const SizedBox(height: 4),
@@ -187,10 +201,13 @@ class RateCardWidget extends StatelessWidget {
     NumberFormat formatter,
     TextTheme textTheme,
     Color color,
+    bool isDarkMode,
   ) {
     return RichText(
       text: TextSpan(
-        style: textTheme.bodyMedium?.copyWith(color: Colors.grey.shade700),
+        style: textTheme.bodyMedium?.copyWith(
+          color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade700,
+        ),
         children: [
           TextSpan(text: '$label: '),
           TextSpan(

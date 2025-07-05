@@ -5,7 +5,7 @@ enum ThemeMode { light, dark, system }
 
 class ThemeProvider extends ChangeNotifier {
   static const String _themeKey = 'theme_mode';
-
+  
   ThemeMode _themeMode = ThemeMode.system;
   bool _isInitialized = false;
 
@@ -14,8 +14,7 @@ class ThemeProvider extends ChangeNotifier {
 
   bool get isDarkMode {
     if (_themeMode == ThemeMode.system) {
-      return WidgetsBinding.instance.platformDispatcher.platformBrightness ==
-          Brightness.dark;
+      return WidgetsBinding.instance.platformDispatcher.platformBrightness == Brightness.dark;
     }
     return _themeMode == ThemeMode.dark;
   }
@@ -23,24 +22,24 @@ class ThemeProvider extends ChangeNotifier {
   Future<void> initializeTheme() async {
     final prefs = await SharedPreferences.getInstance();
     final savedTheme = prefs.getString(_themeKey);
-
+    
     if (savedTheme != null) {
       _themeMode = ThemeMode.values.firstWhere(
         (mode) => mode.toString() == savedTheme,
         orElse: () => ThemeMode.system,
       );
     }
-
+    
     _isInitialized = true;
     notifyListeners();
   }
 
   Future<void> setThemeMode(ThemeMode mode) async {
     if (_themeMode == mode) return;
-
+    
     _themeMode = mode;
     notifyListeners();
-
+    
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_themeKey, mode.toString());
   }
@@ -87,21 +86,22 @@ class ThemeProvider extends ChangeNotifier {
     ),
     cardTheme: CardThemeData(
       elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
     ),
   );
 
   ThemeData get darkTheme => ThemeData(
-    colorScheme:
-        ColorScheme.fromSeed(
-          seedColor: Colors.amber,
-          brightness: Brightness.dark,
-        ).copyWith(
-          surface: const Color(0xFF1A1A1A),
-          background: const Color(0xFF121212),
-          primary: Colors.amber.shade600,
-          primaryContainer: Colors.amber.shade800,
-        ),
+    colorScheme: ColorScheme.fromSeed(
+      seedColor: Colors.amber,
+      brightness: Brightness.dark,
+    ).copyWith(
+      surface: const Color(0xFF1A1A1A),
+      background: const Color(0xFF121212),
+      primary: Colors.amber.shade600,
+      primaryContainer: Colors.amber.shade800,
+    ),
     useMaterial3: true,
     scaffoldBackgroundColor: const Color(0xFF121212),
     appBarTheme: const AppBarTheme(
@@ -142,7 +142,10 @@ class ThemeProvider extends ChangeNotifier {
     ),
     cardTheme: CardThemeData(
       elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      color: Colors.grey.shade800,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
     ),
     bottomNavigationBarTheme: BottomNavigationBarThemeData(
       backgroundColor: const Color(0xFF1A1A1A),
