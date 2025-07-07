@@ -5,7 +5,7 @@ import '../screens/graphs_screen.dart';
 
 class RateCardWidget extends StatelessWidget {
   final model.RateCard card;
-  const RateCardWidget({super.key, required this.card});
+  const RateCardWidget({Key? key, required this.card}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -15,21 +15,15 @@ class RateCardWidget extends StatelessWidget {
       decimalDigits: 2,
     );
     final changeFormatter = NumberFormat('+#;-#', 'en_IN');
-
-    final theme = Theme.of(context);
-    final textTheme = theme.textTheme;
-    final colors = theme.colorScheme;
-
-    final isDark = theme.brightness == Brightness.dark;
+    final colors = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
 
     final currentBuy = double.tryParse(card.buyRate) ?? 0;
     final prevBuy = double.tryParse(card.previousBuyRate) ?? 0;
     final buyChange = currentBuy - prevBuy;
     final buyColor = buyChange == 0
         ? colors.onSurfaceVariant
-        : (buyChange > 0
-              ? colors.secondary
-              : colors.error);
+        : (buyChange > 0 ? Colors.green : colors.error);
     final buyIcon = buyChange == 0
         ? Icons.remove
         : (buyChange > 0 ? Icons.arrow_upward : Icons.arrow_downward);
@@ -39,9 +33,7 @@ class RateCardWidget extends StatelessWidget {
     final sellChange = currentSell - prevSell;
     final sellColor = sellChange == 0
         ? colors.onSurfaceVariant
-        : (sellChange > 0
-              ? colors.secondary
-              : colors.error);
+        : (sellChange > 0 ? Colors.green : colors.error);
     final sellIcon = sellChange == 0
         ? Icons.remove
         : (sellChange > 0 ? Icons.arrow_upward : Icons.arrow_downward);
@@ -175,35 +167,35 @@ class RateCardWidget extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           _buildHighLow(
-            label: 'High',
-            value: high,
-            formatter: currencyFormatter,
-            textTheme: textTheme,
-            color: colors.secondary,
-            onSurfaceVariant: colors.onSurfaceVariant,
+            'High',
+            high,
+            currencyFormatter,
+            textTheme,
+            Colors.green,
+            colors.onSurfaceVariant,
           ),
           const SizedBox(height: 4),
           _buildHighLow(
-            label: 'Low',
-            value: low,
-            formatter: currencyFormatter,
-            textTheme: textTheme,
-            color: colors.error,
-            onSurfaceVariant: colors.onSurfaceVariant,
+            'Low',
+            low,
+            currencyFormatter,
+            textTheme,
+            colors.error,
+            colors.onSurfaceVariant,
           ),
         ],
       ),
     );
   }
 
-  Widget _buildHighLow({
-    required String label,
-    required double value,
-    required NumberFormat formatter,
-    required TextTheme textTheme,
-    required Color color,
-    required Color onSurfaceVariant,
-  }) {
+  Widget _buildHighLow(
+    String label,
+    double value,
+    NumberFormat formatter,
+    TextTheme textTheme,
+    Color color,
+    Color onSurfaceVariant,
+  ) {
     return RichText(
       textAlign: TextAlign.center,
       text: TextSpan(

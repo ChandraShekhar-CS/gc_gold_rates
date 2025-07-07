@@ -1,170 +1,222 @@
-import 'package:flutter/material.dart' hide ThemeMode;
+import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-enum ThemeMode { light, dark, system }
+/// Enum representing available theme modes.
+enum AppThemeMode { system, light, dark }
 
+/// A provider that manages and persists the application's theme settings.
 class ThemeProvider extends ChangeNotifier {
-  static const String _themeKey = 'theme_mode';
+  static const _prefKey = 'app_theme_mode';
+  AppThemeMode _mode = AppThemeMode.system;
+  bool _initialized = false;
 
-  ThemeMode _themeMode = ThemeMode.system;
-  bool _isInitialized = false;
+  /// Returns the current theme mode.
+  AppThemeMode get themeMode => _mode;
 
-  ThemeMode get themeMode => _themeMode;
-  bool get isInitialized => _isInitialized;
-
-  bool get isDarkMode {
-    if (_themeMode == ThemeMode.system) {
-      return WidgetsBinding.instance.platformDispatcher.platformBrightness ==
-          Brightness.dark;
+  /// Indicates whether the dark theme is active.
+  bool get isDark {
+    if (_mode == AppThemeMode.system) {
+      final brightness =
+          WidgetsBinding.instance.platformDispatcher.platformBrightness;
+      return brightness == Brightness.dark;
     }
-    return _themeMode == ThemeMode.dark;
+    return _mode == AppThemeMode.dark;
   }
 
-  Future<void> initializeTheme() async {
-    final prefs = await SharedPreferences.getInstance();
-    final savedTheme = prefs.getString(_themeKey);
+  /// Indicates whether the provider has loaded saved preferences.
+  bool get initialized => _initialized;
 
-    if (savedTheme != null) {
-      _themeMode = ThemeMode.values.firstWhere(
-        (mode) => mode.toString() == savedTheme,
-        orElse: () => ThemeMode.system,
+  /// Alias for init()
+  Future<void> initializeTheme() => init();
+
+  /// Light theme for MaterialApp.theme
+  ThemeData get lightTheme => _buildLightTheme();
+
+  /// Dark theme for MaterialApp.darkTheme
+  ThemeData get darkTheme => _buildDarkTheme();
+
+  /// Initializes the provider by loading the saved theme mode.
+  Future<void> init() async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getString(_prefKey);
+    if (saved != null) {
+      _mode = AppThemeMode.values.firstWhere(
+        (m) => m.toString() == saved,
+        orElse: () => AppThemeMode.system,
       );
     }
-
-    _isInitialized = true;
+    _initialized = true;
     notifyListeners();
   }
 
-  Future<void> setThemeMode(ThemeMode mode) async {
-    if (_themeMode == mode) return;
-
-    _themeMode = mode;
+  /// Updates the theme mode and persists the choice.
+  Future<void> setMode(AppThemeMode newMode) async {
+    if (_mode == newMode) return;
+    _mode = newMode;
     notifyListeners();
-
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_themeKey, mode.toString());
+    await prefs.setString(_prefKey, newMode.toString());
   }
 
-  ThemeData get lightTheme => ThemeData(
-    colorScheme: ColorScheme.fromSeed(
-      seedColor: Colors.amber,
-      secondary: Colors.green,
-      brightness: Brightness.light,
-    ),
-    useMaterial3: true,
-    appBarTheme: AppBarTheme(
-      backgroundColor: Colors.amber.shade700,
-      foregroundColor: Colors.white,
-      elevation: 0,
-    ),
-    elevatedButtonTheme: ElevatedButtonThemeData(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.amber.shade700,
-        foregroundColor: Colors.white,
-      ),
-    ),
-    floatingActionButtonTheme: FloatingActionButtonThemeData(
-      backgroundColor: Colors.amber.shade700,
-      foregroundColor: Colors.white,
-    ),
-    switchTheme: SwitchThemeData(
-      thumbColor: MaterialStateProperty.resolveWith((states) {
-        if (states.contains(MaterialState.selected)) {
-          return Colors.amber.shade700;
-        }
-        return null;
-      }),
-      trackColor: MaterialStateProperty.resolveWith((states) {
-        if (states.contains(MaterialState.selected)) {
-          return Colors.amber.shade300;
-        }
-        return null;
-      }),
-    ),
-    toggleButtonsTheme: ToggleButtonsThemeData(
-      selectedBorderColor: Colors.amber.shade700,
-      selectedColor: Colors.white,
-      fillColor: Colors.amber.shade700,
-    ),
-    cardTheme: CardThemeData(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-    ),
-  );
+  /// Provides the appropriate [ThemeData] based on [isDark].
+  ThemeData get themeData => isDark ? _buildDarkTheme() : _buildLightTheme();
 
-  ThemeData get darkTheme => ThemeData(
-    colorScheme: ColorScheme(
-      brightness: Brightness.dark,
-      primary: const Color(0xFF343434),
-      onPrimary: const Color(0xFFFFFFFF),
-      secondary: const Color(0xFF32D74B),
-      onSecondary: const Color(0xFFFFFFFF),
-      error: const Color(0xFFFF453A),
-      onError: const Color(0xFFFFFFFF),
-      background: const Color(0xFF121212),
-      onBackground: const Color(0xFFFFFFFF),
-      surface: const Color(0xFF1E1E1E),
-      onSurface: const Color(0xFFFFFFFF),
-    ),
-    scaffoldBackgroundColor: const Color(0xFF121212),
-    dividerColor: const Color(0xFF2C2C2C),
-    disabledColor: const Color(0xFF666666),
-    hoverColor: const Color(0xFF2A2A2A),
-    highlightColor: const Color(0xFF383838),
-    useMaterial3: true,
-    appBarTheme: const AppBarTheme(
-      backgroundColor: Color(0xFF121212),
-      foregroundColor: Color(0xFFFFFFFF),
-      elevation: 0,
-    ),
-    elevatedButtonTheme: ElevatedButtonThemeData(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: const Color(0xFFFFD700),
-        foregroundColor: const Color(0xFF000000),
-        disabledBackgroundColor: const Color(0xFF666666),
-        disabledForegroundColor: const Color(0xFF383838),
+  /// Light theme configuration.
+  ThemeData _buildLightTheme() {
+    final scheme = ColorScheme.fromSeed(
+      seedColor: Color(0xFFE16B3B),
+      brightness: Brightness.light,
+    );
+
+    return ThemeData(
+      colorScheme: scheme,
+      useMaterial3: true,
+      brightness: Brightness.light,
+      primaryColor: scheme.primary,
+      scaffoldBackgroundColor: scheme.background,
+      appBarTheme: AppBarTheme(
+        backgroundColor: scheme.primary,
+        foregroundColor: scheme.onPrimary,
+        elevation: 0,
       ),
-    ),
-    floatingActionButtonTheme: FloatingActionButtonThemeData(
-      backgroundColor: const Color(0xFFFFD700),
-      foregroundColor: const Color(0xFF000000),
-    ),
-    switchTheme: SwitchThemeData(
-      thumbColor: MaterialStateProperty.resolveWith((states) {
-        if (states.contains(MaterialState.selected)) {
-          return const Color(0xFFFFD700);
-        }
-        return const Color(0xFF666666);
-      }),
-      trackColor: MaterialStateProperty.resolveWith((states) {
-        if (states.contains(MaterialState.selected)) {
-          return const Color(0xFF2C2C2C);
-        }
-        return const Color(0xFF2C2C2C);
-      }),
-    ),
-    toggleButtonsTheme: ToggleButtonsThemeData(
-      selectedBorderColor: const Color(0xFFFFD700),
-      selectedColor: const Color(0xFF000000),
-      fillColor: const Color(0xFFFFD700),
-      borderColor: const Color(0xFF2C2C2C),
-      color: const Color(0xFFB3B3B3),
-    ),
-    cardTheme: CardThemeData(
-      color: const Color(0xFF1E1E1E),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-    ),
-    bottomNavigationBarTheme: BottomNavigationBarThemeData(
-      backgroundColor: const Color(0xFF1E1E1E),
-      selectedItemColor: const Color(0xFFFFD700),
-      unselectedItemColor: const Color(0xFFB3B3B3),
-      type: BottomNavigationBarType.fixed,
-    ),
-    textTheme: const TextTheme(
-      bodyLarge: TextStyle(color: Color(0xFFFFFFFF)),
-      bodyMedium: TextStyle(color: Color(0xFFB3B3B3)),
-      bodySmall: TextStyle(color: Color(0xFF666666)),
-    ),
-  );
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: scheme.primary,
+          foregroundColor: scheme.onPrimary,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(foregroundColor: scheme.primary),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: scheme.primary,
+          side: BorderSide(color: scheme.primary),
+        ),
+      ),
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: scheme.secondary,
+        foregroundColor: scheme.onSecondary,
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: scheme.surfaceVariant,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide.none,
+        ),
+      ),
+      cardTheme: CardThemeData(
+        color: scheme.surface,
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+      bottomNavigationBarTheme: BottomNavigationBarThemeData(
+        backgroundColor: scheme.surface,
+        selectedItemColor: scheme.primary,
+        unselectedItemColor: scheme.onSurface.withOpacity(0.6),
+        type: BottomNavigationBarType.fixed,
+      ),
+      switchTheme: SwitchThemeData(
+        thumbColor: MaterialStateProperty.resolveWith(
+          (states) =>
+              states.contains(MaterialState.selected) ? scheme.primary : null,
+        ),
+        trackColor: MaterialStateProperty.resolveWith(
+          (states) => states.contains(MaterialState.selected)
+              ? scheme.primary.withOpacity(0.5)
+              : null,
+        ),
+      ),
+      toggleButtonsTheme: ToggleButtonsThemeData(
+        color: scheme.onSurfaceVariant,
+        selectedColor: scheme.onPrimary,
+        fillColor: scheme.primary,
+        borderRadius: BorderRadius.circular(8),
+      ),
+    );
+  }
+
+  /// Dark theme configuration.
+  ThemeData _buildDarkTheme() {
+    final scheme = ColorScheme.fromSeed(
+      seedColor: Colors.indigo,
+      brightness: Brightness.dark,
+    );
+
+    return ThemeData(
+      colorScheme: scheme,
+      useMaterial3: true,
+      brightness: Brightness.dark,
+      primaryColor: scheme.primary,
+      scaffoldBackgroundColor: scheme.background,
+      appBarTheme: AppBarTheme(
+        backgroundColor: scheme.surface,
+        foregroundColor: scheme.onSurface,
+        elevation: 0,
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: scheme.secondary,
+          foregroundColor: scheme.onSecondary,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(foregroundColor: scheme.secondary),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: scheme.secondary,
+          side: BorderSide(color: scheme.secondary),
+        ),
+      ),
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: scheme.secondary,
+        foregroundColor: scheme.onSecondary,
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: scheme.surfaceVariant,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide.none,
+        ),
+      ),
+      cardTheme: CardThemeData(
+        color: scheme.surface,
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+      bottomNavigationBarTheme: BottomNavigationBarThemeData(
+        backgroundColor: scheme.surface,
+        selectedItemColor: scheme.secondary,
+        unselectedItemColor: scheme.onSurface.withOpacity(0.6),
+        type: BottomNavigationBarType.fixed,
+      ),
+      switchTheme: SwitchThemeData(
+        thumbColor: MaterialStateProperty.resolveWith(
+          (states) => states.contains(MaterialState.selected)
+              ? scheme.secondary
+              : scheme.onSurfaceVariant,
+        ),
+        trackColor: MaterialStateProperty.resolveWith(
+          (states) => states.contains(MaterialState.selected)
+              ? scheme.secondary.withOpacity(0.5)
+              : scheme.onSurfaceVariant,
+        ),
+      ),
+      toggleButtonsTheme: ToggleButtonsThemeData(
+        color: scheme.onSurfaceVariant,
+        selectedColor: scheme.onSurface,
+        fillColor: scheme.secondary,
+        borderRadius: BorderRadius.circular(8),
+      ),
+    );
+  }
 }

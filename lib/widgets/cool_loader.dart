@@ -58,6 +58,7 @@ class _CoolLoaderState extends State<CoolLoader> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     final primaryColor =
         widget.primaryColor ?? Theme.of(context).colorScheme.primary;
+    final onPrimary = Theme.of(context).colorScheme.onPrimary;
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -115,9 +116,9 @@ class _CoolLoaderState extends State<CoolLoader> with TickerProviderStateMixin {
                           ),
                         ],
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.trending_up,
-                        color: Colors.white,
+                        color: onPrimary,
                         size: 24,
                       ),
                     ),

@@ -6,7 +6,7 @@ import '../models/alert_model.dart';
 import 'alert_creation_screen.dart';
 
 class AlertManagementScreen extends StatefulWidget {
-  const AlertManagementScreen({super.key});
+  const AlertManagementScreen({Key? key}) : super(key: key);
 
   @override
   State<AlertManagementScreen> createState() => _AlertManagementScreenState();
@@ -32,7 +32,9 @@ class _AlertManagementScreenState extends State<AlertManagementScreen> {
       builder: (ctx) => AlertDialog(
         title: const Text('Delete Alert'),
         content: Text(
-          'Delete alert for ${alert.rateDisplayName} ${alert.displayCondition.toLowerCase()} ₹${alert.targetValue.toStringAsFixed(2)}?',
+          'Delete alert for ${alert.rateDisplayName} '
+          '${alert.displayCondition.toLowerCase()} '
+          '₹${alert.targetValue.toStringAsFixed(2)}?',
         ),
         actions: [
           TextButton(
@@ -66,7 +68,6 @@ class _AlertManagementScreenState extends State<AlertManagementScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
-    final textTheme = theme.textTheme;
 
     return Scaffold(
       body: RefreshIndicator(
@@ -87,6 +88,8 @@ class _AlertManagementScreenState extends State<AlertManagementScreen> {
         ),
       ),
       floatingActionButton: FloatingActionButton(
+        backgroundColor: colors.secondary,
+        foregroundColor: colors.onSecondary,
         onPressed: () => Navigator.of(
           context,
         ).push(MaterialPageRoute(builder: (_) => const AlertCreationScreen())),
@@ -118,6 +121,10 @@ class _AlertManagementScreenState extends State<AlertManagementScreen> {
             ),
             const SizedBox(height: 24),
             ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: colors.primary,
+                foregroundColor: colors.onPrimary,
+              ),
               onPressed: _refreshAlerts,
               icon: const Icon(Icons.refresh),
               label: const Text('Retry'),
@@ -150,7 +157,8 @@ class _AlertManagementScreenState extends State<AlertManagementScreen> {
             ),
             const SizedBox(height: 12),
             Text(
-              'Create your first alert to get notified when prices reach your targets.',
+              'Create your first alert to get notified when '
+              'prices reach your targets.',
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: colors.onSurfaceVariant,
               ),
@@ -158,6 +166,10 @@ class _AlertManagementScreenState extends State<AlertManagementScreen> {
             ),
             const SizedBox(height: 32),
             ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: colors.primary,
+                foregroundColor: colors.onPrimary,
+              ),
               onPressed: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const AlertCreationScreen()),
               ),
@@ -174,6 +186,7 @@ class _AlertManagementScreenState extends State<AlertManagementScreen> {
     final colors = theme.colorScheme;
     final active = alerts.where((a) => a.isActive).toList();
     final inactive = alerts.where((a) => !a.isActive).toList();
+
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -230,6 +243,7 @@ class _AlertManagementScreenState extends State<AlertManagementScreen> {
       decimalDigits: 2,
     );
     final df = DateFormat('dd MMM yyyy, hh:mm a');
+
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       elevation: alert.isActive ? 2 : 1,
@@ -265,17 +279,18 @@ class _AlertManagementScreenState extends State<AlertManagementScreen> {
                                 ? Icons.keyboard_arrow_up
                                 : Icons.keyboard_arrow_down,
                             color: alert.conditionType == 'above'
-                                ? colors.secondary
+                                ? Colors.green
                                 : colors.error,
                             size: 20,
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            '${alert.displayCondition} ${fmt.format(alert.targetValue)}',
+                            '${alert.displayCondition} '
+                            '${fmt.format(alert.targetValue)}',
                             style: theme.textTheme.bodyLarge?.copyWith(
                               fontWeight: FontWeight.w600,
                               color: alert.conditionType == 'above'
-                                  ? colors.secondary
+                                  ? Colors.green
                                   : colors.error,
                             ),
                           ),
@@ -286,6 +301,14 @@ class _AlertManagementScreenState extends State<AlertManagementScreen> {
                 ),
                 Switch(
                   value: alert.isActive,
+                  activeColor: colors.primary, // thumb color when ON
+                  activeTrackColor:
+                      colors.primaryContainer, // track color when ON
+                  inactiveThumbColor:
+                      colors.onSurfaceVariant, // thumb color when OFF
+                  inactiveTrackColor: colors.onSurfaceVariant.withOpacity(
+                    0.3,
+                  ), // track color when OFF
                   onChanged: (val) async {
                     final ok = await context.read<AlertProvider>().toggleAlert(
                       alert.id,

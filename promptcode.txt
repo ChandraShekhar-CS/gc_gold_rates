@@ -46,13 +46,24 @@ foreach ($file in $files) {
 
 
 $FilePaths = @(
+"C:\MyData\Flutter\flutter_application_1\lib\firebase_options.dart"
 "C:\MyData\Flutter\flutter_application_1\lib\main.dart"
+"C:\MyData\Flutter\flutter_application_1\lib\models\alert_model.dart"
 "C:\MyData\Flutter\flutter_application_1\lib\models\rate_card.dart"
+"C:\MyData\Flutter\flutter_application_1\lib\providers\alert_provider.dart"
 "C:\MyData\Flutter\flutter_application_1\lib\providers\rates_provider.dart"
+"C:\MyData\Flutter\flutter_application_1\lib\screens\alert_creation_screen.dart"
+"C:\MyData\Flutter\flutter_application_1\lib\screens\alert_management_screen.dart"
 "C:\MyData\Flutter\flutter_application_1\lib\screens\graphs_screen.dart"
+"C:\MyData\Flutter\flutter_application_1\lib\screens\initialization_screen.dart"
 "C:\MyData\Flutter\flutter_application_1\lib\screens\main_screen.dart"
+"C:\MyData\Flutter\flutter_application_1\lib\screens\settings_screen.dart"
+"C:\MyData\Flutter\flutter_application_1\lib\services\alert_service.dart"
 "C:\MyData\Flutter\flutter_application_1\lib\services\api_service.dart"
+"C:\MyData\Flutter\flutter_application_1\lib\services\notification_service.dart"
+"C:\MyData\Flutter\flutter_application_1\lib\widgets\cool_loader.dart"
 "C:\MyData\Flutter\flutter_application_1\lib\widgets\rate_card.dart"
+"C:\MyData\Flutter\flutter_application_1\lib\widgets\theme_selection_dialog.dar"
 )
 $OutputFilePath = "C:\MyData\Flutter\flutter_application_1\prompt.txt"
 $OutputContent = ""

@@ -39,13 +39,9 @@ class _AlertCreationScreenState extends State<AlertCreationScreen> {
   void initState() {
     super.initState();
     if (widget.initialRateType != null &&
-        _rateOptions.any(
-          (option) => option['value'] == widget.initialRateType,
-        )) {
+        _rateOptions.any((o) => o['value'] == widget.initialRateType)) {
       _selectedRateType = widget.initialRateType!;
     }
-
-    // Test connection when screen opens
     _testConnection();
   }
 
@@ -57,10 +53,10 @@ class _AlertCreationScreenState extends State<AlertCreationScreen> {
 
   double? _getCurrentRate() {
     final ratesProvider = context.read<RatesProvider>();
-    final rateCard = ratesProvider.rateCards
-        .where((card) => card.apiSymbol == _selectedRateType)
-        .firstOrNull;
-
+    final rateCard = ratesProvider.rateCards.firstWhere(
+      (card) => card.apiSymbol == _selectedRateType,
+      orElse: () => null as dynamic,
+    );
     if (rateCard != null) {
       return double.tryParse(rateCard.buyRate);
     }
@@ -69,24 +65,21 @@ class _AlertCreationScreenState extends State<AlertCreationScreen> {
 
   Future<void> _testConnection() async {
     setState(() => _isTestingConnection = true);
-
     try {
       final alertService = AlertService();
       final isConnected = await alertService.testConnection();
-
       if (mounted) {
         setState(() {
           _connectionStatus = isConnected;
           _isTestingConnection = false;
         });
-
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
               children: [
                 Icon(
                   isConnected ? Icons.check_circle : Icons.error,
-                  color: Colors.white,
+                  color: Theme.of(context).colorScheme.onPrimary,
                   size: 20,
                 ),
                 const SizedBox(width: 8),
@@ -97,12 +90,14 @@ class _AlertCreationScreenState extends State<AlertCreationScreen> {
                 ),
               ],
             ),
-            backgroundColor: isConnected ? Colors.green : Colors.red,
+            backgroundColor: isConnected
+                ? Theme.of(context).colorScheme.secondary
+                : Theme.of(context).colorScheme.error,
             duration: const Duration(seconds: 3),
           ),
         );
       }
-    } catch (e) {
+    } catch (_) {
       if (mounted) {
         setState(() {
           _connectionStatus = false;
@@ -113,47 +108,41 @@ class _AlertCreationScreenState extends State<AlertCreationScreen> {
   }
 
   Future<void> _createAlert() async {
-    // Check connection first
     if (_connectionStatus != true) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Cannot create alert: Server connection failed'),
-          backgroundColor: Colors.red,
+        SnackBar(
+          content: const Text('Cannot create alert: Server connection failed'),
+          backgroundColor: Theme.of(context).colorScheme.error,
         ),
       );
       return;
     }
-
     if (!_formKey.currentState!.validate()) return;
-
     setState(() => _isCreating = true);
-
     final targetValue = double.parse(_targetValueController.text);
-    final alertProvider = context.read<AlertProvider>();
-
-    final success = await alertProvider.createAlert(
+    final success = await context.read<AlertProvider>().createAlert(
       rateType: _selectedRateType,
       conditionType: _selectedCondition,
       targetValue: targetValue,
     );
-
     setState(() => _isCreating = false);
-
     if (!mounted) return;
-
     if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Alert created successfully!'),
-          backgroundColor: Colors.green,
+        SnackBar(
+          content: const Text('Alert created successfully!'),
+          backgroundColor: Theme.of(context).colorScheme.secondary,
         ),
       );
       Navigator.of(context).pop();
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(alertProvider.errorMessage ?? 'Failed to create alert'),
-          backgroundColor: Colors.red,
+          content: Text(
+            context.read<AlertProvider>().errorMessage ??
+                'Failed to create alert',
+          ),
+          backgroundColor: Theme.of(context).colorScheme.error,
         ),
       );
     }
@@ -167,13 +156,14 @@ class _AlertCreationScreenState extends State<AlertCreationScreen> {
   }
 
   Widget _buildConnectionStatus() {
+    final cs = Theme.of(context).colorScheme;
     if (_isTestingConnection) {
       return Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.blue.shade50,
+          color: cs.primaryContainer.withOpacity(0.1),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.blue.shade200),
+          border: Border.all(color: cs.primaryContainer),
         ),
         child: const Row(
           children: [
@@ -188,39 +178,30 @@ class _AlertCreationScreenState extends State<AlertCreationScreen> {
         ),
       );
     }
-
     if (_connectionStatus == null) return const SizedBox.shrink();
-
+    final success = _connectionStatus!;
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: _connectionStatus! ? Colors.green.shade50 : Colors.red.shade50,
+        color: success ? cs.secondaryContainer : cs.errorContainer,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: _connectionStatus!
-              ? Colors.green.shade200
-              : Colors.red.shade200,
-        ),
+        border: Border.all(color: success ? cs.secondary : cs.error),
       ),
       child: Row(
         children: [
           Icon(
-            _connectionStatus! ? Icons.check_circle : Icons.error,
-            color: _connectionStatus!
-                ? Colors.green.shade700
-                : Colors.red.shade700,
+            success ? Icons.check_circle : Icons.error,
+            color: success ? cs.secondary : cs.error,
             size: 20,
           ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              _connectionStatus!
+              success
                   ? 'Server connected - Alerts will work properly'
                   : 'Server connection failed - Alerts may not work',
               style: TextStyle(
-                color: _connectionStatus!
-                    ? Colors.green.shade700
-                    : Colors.red.shade700,
+                color: success ? cs.secondary : cs.error,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -239,8 +220,9 @@ class _AlertCreationScreenState extends State<AlertCreationScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Create Price Alert'),
-        backgroundColor: Colors.amber.shade700,
-        foregroundColor: Colors.white,
+        backgroundColor: theme.colorScheme.primary,
+        foregroundColor: theme.colorScheme.onPrimary,
+        elevation: 0,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -286,6 +268,7 @@ class _AlertCreationScreenState extends State<AlertCreationScreen> {
 
             const SizedBox(height: 16),
 
+            // Alert Configuration
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
@@ -300,6 +283,7 @@ class _AlertCreationScreenState extends State<AlertCreationScreen> {
                     ),
                     const SizedBox(height: 20),
 
+                    // Rate Type Dropdown
                     DropdownButtonFormField<String>(
                       value: _selectedRateType,
                       decoration: InputDecoration(
@@ -330,6 +314,7 @@ class _AlertCreationScreenState extends State<AlertCreationScreen> {
 
                     const SizedBox(height: 16),
 
+                    // Condition Dropdown
                     DropdownButtonFormField<String>(
                       value: _selectedCondition,
                       decoration: InputDecoration(
@@ -339,17 +324,17 @@ class _AlertCreationScreenState extends State<AlertCreationScreen> {
                         ),
                         prefixIcon: const Icon(Icons.compare_arrows),
                       ),
-                      items: const [
+                      items: [
                         DropdownMenuItem(
                           value: 'above',
                           child: Row(
                             children: [
                               Icon(
                                 Icons.keyboard_arrow_up,
-                                color: Colors.green,
+                                color: theme.colorScheme.secondary,
                               ),
-                              SizedBox(width: 8),
-                              Text('Above'),
+                              const SizedBox(width: 8),
+                              const Text('Above'),
                             ],
                           ),
                         ),
@@ -359,10 +344,10 @@ class _AlertCreationScreenState extends State<AlertCreationScreen> {
                             children: [
                               Icon(
                                 Icons.keyboard_arrow_down,
-                                color: Colors.red,
+                                color: theme.colorScheme.error,
                               ),
-                              SizedBox(width: 8),
-                              Text('Below'),
+                              const SizedBox(width: 8),
+                              const Text('Below'),
                             ],
                           ),
                         ),
@@ -376,6 +361,7 @@ class _AlertCreationScreenState extends State<AlertCreationScreen> {
 
                     const SizedBox(height: 16),
 
+                    // Target Price Field
                     TextFormField(
                       controller: _targetValueController,
                       decoration: InputDecoration(
@@ -450,25 +436,28 @@ class _AlertCreationScreenState extends State<AlertCreationScreen> {
 
             const SizedBox(height: 20),
 
+            // Create Button
             ElevatedButton(
               onPressed: (_isCreating || _connectionStatus != true)
                   ? null
                   : _createAlert,
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.amber.shade700,
-                foregroundColor: Colors.white,
+                backgroundColor: theme.colorScheme.primary,
+                foregroundColor: theme.colorScheme.onPrimary,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
               child: _isCreating
-                  ? const SizedBox(
+                  ? SizedBox(
                       height: 20,
                       width: 20,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          theme.colorScheme.onPrimary,
+                        ),
                       ),
                     )
                   : Text(
@@ -484,6 +473,7 @@ class _AlertCreationScreenState extends State<AlertCreationScreen> {
 
             const SizedBox(height: 16),
 
+            // How Alerts Work
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
@@ -494,7 +484,7 @@ class _AlertCreationScreenState extends State<AlertCreationScreen> {
                       children: [
                         Icon(
                           Icons.info_outline,
-                          color: Colors.blue.shade600,
+                          color: theme.colorScheme.primary,
                           size: 20,
                         ),
                         const SizedBox(width: 8),
@@ -502,7 +492,7 @@ class _AlertCreationScreenState extends State<AlertCreationScreen> {
                           'How Alerts Work',
                           style: theme.textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.bold,
-                            color: Colors.blue.shade600,
+                            color: theme.colorScheme.primary,
                           ),
                         ),
                       ],

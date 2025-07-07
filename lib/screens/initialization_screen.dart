@@ -60,6 +60,8 @@ class _InitializationScreenState extends State<InitializationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
     return Scaffold(
       body: Center(
         child: _error == null
@@ -75,7 +77,7 @@ class _InitializationScreenState extends State<InitializationScreen> {
                     Icon(
                       Icons.cloud_off_rounded,
                       size: 60,
-                      color: Colors.grey.shade400,
+                      color: colors.onSurfaceVariant,
                     ),
                     const SizedBox(height: 24),
                     Text(
@@ -95,8 +97,8 @@ class _InitializationScreenState extends State<InitializationScreen> {
                       icon: const Icon(Icons.refresh),
                       label: const Text('Retry'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Theme.of(context).colorScheme.primary,
-                        foregroundColor: Colors.white,
+                        backgroundColor: colors.primary,
+                        foregroundColor: colors.onPrimary,
                         padding: const EdgeInsets.symmetric(
                           horizontal: 24,
                           vertical: 12,

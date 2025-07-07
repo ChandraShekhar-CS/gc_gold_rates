@@ -344,8 +344,16 @@ class _GraphsScreenState extends State<GraphsScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceAround,
       children: [
-        _buildStatPill('Lowest', formatter.format(price.low), Colors.red),
-        _buildStatPill('Highest', formatter.format(price.high), Colors.green),
+        _buildStatPill(
+          'Lowest',
+          formatter.format(price.low),
+          Colors.red,
+        ),
+        _buildStatPill(
+          'Highest',
+          formatter.format(price.high),
+          Colors.green,
+        ),
       ],
     );
   }
@@ -429,7 +437,7 @@ class _GraphsScreenState extends State<GraphsScreen> {
           xValueMapper: (_ChartData data, _) => data.x,
           yValueMapper: (_ChartData data, _) => data.y,
           name: _selectedSeries.toUpperCase(),
-          color: Theme.of(context).colorScheme.onSecondary,
+          color: Theme.of(context).colorScheme.primary,
           width: 2.5,
         ),
       ],
@@ -438,7 +446,7 @@ class _GraphsScreenState extends State<GraphsScreen> {
         enable: true,
         activationMode: ActivationMode.singleTap,
         lineType: TrackballLineType.vertical,
-        lineColor: Theme.of(context).colorScheme.onSecondary.withOpacity(0.7),
+        lineColor: Theme.of(context).colorScheme.primary,
         lineWidth: 2,
         markerSettings: const TrackballMarkerSettings(
           markerVisibility: TrackballVisibilityMode.visible,
@@ -467,11 +475,11 @@ class _GraphsScreenState extends State<GraphsScreen> {
           return Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: Colors.black87,
+              color: Theme.of(context).colorScheme.secondary.withOpacity(0.8),
               borderRadius: BorderRadius.circular(8),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black26,
+                  color: Theme.of(context).shadowColor,
                   blurRadius: 4,
                   offset: const Offset(0, 2),
                 ),
@@ -482,16 +490,17 @@ class _GraphsScreenState extends State<GraphsScreen> {
               children: [
                 Text(
                   formattedRate,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSecondary,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   formattedDate,
-                  style: const TextStyle(color: Colors.white70, fontSize: 11),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSecondary,
+                  ),
                 ),
               ],
             ),

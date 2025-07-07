@@ -8,7 +8,7 @@ import 'alert_management_screen.dart';
 import 'settings_screen.dart';
 
 class MainScreen extends StatefulWidget {
-  const MainScreen({super.key});
+  const MainScreen({Key? key}) : super(key: key);
 
   @override
   State<MainScreen> createState() => _MainScreenState();
@@ -50,7 +50,6 @@ class _MainScreenState extends State<MainScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    super.didChangeAppLifecycleState(state);
     if (state == AppLifecycleState.resumed) {
       _startAutoRefresh();
       _refreshRates();
@@ -61,10 +60,8 @@ class _MainScreenState extends State<MainScreen>
 
   void _startAutoRefresh() {
     _stopAutoRefresh();
-    _autoRefreshTimer = Timer.periodic(_refreshInterval, (timer) {
-      if (_currentIndex == 0 && mounted) {
-        _refreshRates();
-      }
+    _autoRefreshTimer = Timer.periodic(_refreshInterval, (_) {
+      if (_currentIndex == 0 && mounted) _refreshRates();
     });
   }
 
@@ -74,26 +71,20 @@ class _MainScreenState extends State<MainScreen>
   }
 
   void _refreshRates() {
-    if (mounted) {
-      Provider.of<RatesProvider>(context, listen: false).fetchRates();
-    }
+    if (mounted) context.read<RatesProvider>().fetchRates();
   }
 
   void _onBottomNavTap(int index) {
-    setState(() {
-      _currentIndex = index;
-    });
+    setState(() => _currentIndex = index);
     _pageController.animateToPage(
       index,
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOut,
     );
-
-    if (index == 0) {
+    if (index == 0)
       _startAutoRefresh();
-    } else {
+    else
       _stopAutoRefresh();
-    }
   }
 
   String _getAppBarTitle() {
@@ -113,25 +104,31 @@ class _MainScreenState extends State<MainScreen>
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(_getAppBarTitle()),
-        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
-        foregroundColor: Theme.of(context).appBarTheme.foregroundColor,
+        backgroundColor: theme.appBarTheme.backgroundColor,
+        foregroundColor: theme.appBarTheme.foregroundColor,
         elevation: 0,
         automaticallyImplyLeading: false,
         actions: _currentIndex == 0
             ? [
                 Consumer<RatesProvider>(
-                  builder: (context, provider, child) {
+                  builder: (_, provider, __) {
                     return IconButton(
                       icon: provider.isLoading
-                          ? const SizedBox(
+                          ? SizedBox(
                               width: 20,
                               height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: colors.onPrimary,
+                              ),
                             )
-                          : const Icon(Icons.refresh),
+                          : Icon(Icons.refresh, color: colors.onPrimary),
                       onPressed: provider.isLoading ? null : _refreshRates,
                     );
                   },
@@ -143,21 +140,18 @@ class _MainScreenState extends State<MainScreen>
         opacity: _fadeAnimation,
         child: PageView(
           controller: _pageController,
-          onPageChanged: (index) {
-            setState(() {
-              _currentIndex = index;
-            });
-            if (index == 0) {
+          onPageChanged: (i) {
+            setState(() => _currentIndex = i);
+            if (i == 0)
               _startAutoRefresh();
-            } else {
+            else
               _stopAutoRefresh();
-            }
           },
-          children: [
-            _buildLiveRatesPage(),
-            _buildGraphsPage(),
-            _buildAlertsPage(),
-            _buildSettingsPage(),
+          children: const [
+            _LiveRatesPage(),
+            GraphsScreen(),
+            AlertManagementScreen(),
+            SettingsScreen(),
           ],
         ),
       ),
@@ -165,11 +159,9 @@ class _MainScreenState extends State<MainScreen>
         type: BottomNavigationBarType.fixed,
         currentIndex: _currentIndex,
         onTap: _onBottomNavTap,
-        selectedItemColor: Theme.of(context).colorScheme.onSecondary,
-        unselectedItemColor: Theme.of(
-          context,
-        ).colorScheme.onSurface.withOpacity(0.6),
-        backgroundColor: Theme.of(context).colorScheme.surface,
+        selectedItemColor: colors.primary,
+        unselectedItemColor: colors.onSurface.withOpacity(0.6),
+        backgroundColor: colors.surface,
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.home_outlined),
@@ -195,18 +187,21 @@ class _MainScreenState extends State<MainScreen>
       ),
     );
   }
+}
 
-  Widget _buildLiveRatesPage() {
+class _LiveRatesPage extends StatelessWidget {
+  const _LiveRatesPage({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     return RefreshIndicator(
-      onRefresh: () async {
-        await Provider.of<RatesProvider>(context, listen: false).fetchRates();
-      },
+      onRefresh: () async => context.read<RatesProvider>().fetchRates(),
       child: Consumer<RatesProvider>(
-        builder: (context, provider, child) {
+        builder: (_, provider, __) {
           if (provider.isLoading && provider.rateCards.isEmpty) {
             return const Center(child: CircularProgressIndicator());
           }
-
           if (provider.errorMessage != null) {
             return Center(
               child: Column(
@@ -215,66 +210,31 @@ class _MainScreenState extends State<MainScreen>
                   Text('Error: ${provider.errorMessage}'),
                   const SizedBox(height: 16),
                   ElevatedButton(
-                    onPressed: _refreshRates,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: colors.primary,
+                      foregroundColor: colors.onPrimary,
+                    ),
+                    onPressed: () => context.read<RatesProvider>().fetchRates(),
                     child: const Text('Retry'),
                   ),
                 ],
               ),
             );
           }
-
           if (provider.rateCards.isEmpty) {
             return const Center(child: Text('No rate cards available.'));
           }
-
           return ReorderableListView.builder(
-            padding: const EdgeInsets.only(
-              left: 8,
-              right: 8,
-              top: 8,
-              bottom: 20,
-            ),
+            padding: const EdgeInsets.fromLTRB(8, 8, 8, 20),
             itemCount: provider.rateCards.length,
-            itemBuilder: (context, index) {
+            itemBuilder: (_, index) {
               final card = provider.rateCards[index];
               return RateCardWidget(key: ValueKey(card.uniqueId), card: card);
             },
-            onReorder: (oldIndex, newIndex) {
-              provider.reorderCards(oldIndex, newIndex);
-            },
+            onReorder: provider.reorderCards,
           );
         },
       ),
     );
-  }
-
-  Widget _buildGraphsPage() {
-    return const GraphsScreenContent();
-  }
-
-  Widget _buildAlertsPage() {
-    return const AlertManagementScreen();
-  }
-
-  Widget _buildSettingsPage() {
-    return const SettingsScreenContent();
-  }
-}
-
-class GraphsScreenContent extends StatelessWidget {
-  const GraphsScreenContent({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const GraphsScreen();
-  }
-}
-
-class SettingsScreenContent extends StatelessWidget {
-  const SettingsScreenContent({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const SettingsScreen();
   }
 }
