@@ -91,24 +91,12 @@ class SettingsScreen extends StatelessWidget {
                 ListTile(
                   leading: const Icon(Icons.apps),
                   title: const Text('App Version'),
-                  subtitle: const Text('1.0.0'),
+                  subtitle: const Text('4.1'),
                 ),
                 ListTile(
                   leading: const Icon(Icons.business),
                   title: const Text('Developer'),
                   subtitle: const Text('GC Gold Rates Team'),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.description),
-                  title: const Text('Privacy Policy'),
-                  trailing: const Icon(Icons.launch),
-                  onTap: () {},
-                ),
-                ListTile(
-                  leading: const Icon(Icons.help_outline),
-                  title: const Text('Help & Support'),
-                  trailing: const Icon(Icons.launch),
-                  onTap: () {},
                 ),
               ],
             ),

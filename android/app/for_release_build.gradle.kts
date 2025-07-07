@@ -1,5 +1,5 @@
-import java.util.Properties
 import java.io.FileInputStream
+import java.util.Properties
 
 plugins {
     id("com.android.application")
@@ -9,6 +9,7 @@ plugins {
 
 val keystoreProperties = Properties()
 val keystorePropertiesFile = rootProject.file("key.properties")
+
 if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
@@ -26,8 +27,8 @@ android {
         applicationId = "com.gcjewellers.rateswidget"
         minSdk = 24
         targetSdk = 35
-        versionCode = 40
-        versionName = "4.0"
+        versionCode = 41
+        versionName = "4.1"
     }
 
     signingConfigs {
@@ -39,11 +40,7 @@ android {
         }
     }
 
-    buildTypes {
-        release {
-            signingConfig = signingConfigs.getByName("release")
-        }
-    }
+    buildTypes { release { signingConfig = signingConfigs.getByName("release") } }
 }
 
 flutter { source = "../.." }

@@ -18,7 +18,7 @@ if (keystorePropertiesFile.exists()) {
 
 android {
     namespace = "com.gcjewellers.rateswidget"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 35
     ndkVersion = "27.0.12077973"
     
     compileOptions {
@@ -34,10 +34,10 @@ android {
     
     defaultConfig {
         applicationId = "com.gcjewellers.rateswidget"
-        minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
-        versionCode = flutter.versionCode
-        versionName = flutter.versionName
+        minSdk = 24
+        targetSdk = 35
+        versionCode = 41
+        versionName = "4.1"
         // ➕ ADD THIS LINE
         multiDexEnabled = true
     }

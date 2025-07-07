@@ -1,7 +1,7 @@
 name: gc_gold_rates
 description: "A new Flutter project."
-publish_to: 'none'
-version: 1.0.0+1
+publish_to: "none"
+version: 4.1.0
 environment:
   sdk: ^3.8.0
 dependencies:
@@ -15,15 +15,6 @@ dependencies:
   syncfusion_flutter_charts: ^29.2.10
   firebase_core: ^3.14.0
   firebase_messaging: ^15.2.7
- 
-
-
-
-
-
-
-
-
 
 dev_dependencies:
   flutter_test:
@@ -31,7 +22,7 @@ dev_dependencies:
   flutter_lints: ^6.0.0
 
   flutter_launcher_icons: ^0.13.1
-  flutter_local_notifications: ^17.0.0 
+  flutter_local_notifications: ^17.0.0
 
 flutter_launcher_icons:
   android: "launcher_icon"
@@ -44,7 +35,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/animations/bell_static.png
-    - assets/animations/chart_static.png  
+    - assets/animations/chart_static.png
     - assets/animations/home_static.png
     - assets/animations/bell_icon.gif
     - assets/animations/chart_icon.gif
