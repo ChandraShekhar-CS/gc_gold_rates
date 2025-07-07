@@ -3,10 +3,11 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/alert_provider.dart';
 import '../providers/rates_provider.dart';
+import '../services/alert_service.dart';
 
 class AlertCreationScreen extends StatefulWidget {
   final String? initialRateType;
-  
+
   const AlertCreationScreen({super.key, this.initialRateType});
 
   @override
@@ -16,10 +17,12 @@ class AlertCreationScreen extends StatefulWidget {
 class _AlertCreationScreenState extends State<AlertCreationScreen> {
   final _formKey = GlobalKey<FormState>();
   final _targetValueController = TextEditingController();
-  
+
   String _selectedRateType = 'gold';
   String _selectedCondition = 'above';
   bool _isCreating = false;
+  bool _isTestingConnection = false;
+  bool? _connectionStatus;
 
   final List<Map<String, String>> _rateOptions = [
     {'value': 'gold', 'label': 'Gold 995'},
@@ -36,9 +39,14 @@ class _AlertCreationScreenState extends State<AlertCreationScreen> {
   void initState() {
     super.initState();
     if (widget.initialRateType != null &&
-        _rateOptions.any((option) => option['value'] == widget.initialRateType)) {
+        _rateOptions.any(
+          (option) => option['value'] == widget.initialRateType,
+        )) {
       _selectedRateType = widget.initialRateType!;
     }
+
+    // Test connection when screen opens
+    _testConnection();
   }
 
   @override
@@ -52,14 +60,70 @@ class _AlertCreationScreenState extends State<AlertCreationScreen> {
     final rateCard = ratesProvider.rateCards
         .where((card) => card.apiSymbol == _selectedRateType)
         .firstOrNull;
-    
+
     if (rateCard != null) {
       return double.tryParse(rateCard.buyRate);
     }
     return null;
   }
 
+  Future<void> _testConnection() async {
+    setState(() => _isTestingConnection = true);
+
+    try {
+      final alertService = AlertService();
+      final isConnected = await alertService.testConnection();
+
+      if (mounted) {
+        setState(() {
+          _connectionStatus = isConnected;
+          _isTestingConnection = false;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(
+                  isConnected ? Icons.check_circle : Icons.error,
+                  color: Colors.white,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  isConnected
+                      ? 'Server Connected ✅'
+                      : 'Server Connection Failed ❌',
+                ),
+              ],
+            ),
+            backgroundColor: isConnected ? Colors.green : Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _connectionStatus = false;
+          _isTestingConnection = false;
+        });
+      }
+    }
+  }
+
   Future<void> _createAlert() async {
+    // Check connection first
+    if (_connectionStatus != true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cannot create alert: Server connection failed'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isCreating = true);
@@ -102,6 +166,71 @@ class _AlertCreationScreenState extends State<AlertCreationScreen> {
     }
   }
 
+  Widget _buildConnectionStatus() {
+    if (_isTestingConnection) {
+      return Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.blue.shade50,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.blue.shade200),
+        ),
+        child: const Row(
+          children: [
+            SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            SizedBox(width: 12),
+            Text('Testing server connection...'),
+          ],
+        ),
+      );
+    }
+
+    if (_connectionStatus == null) return const SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: _connectionStatus! ? Colors.green.shade50 : Colors.red.shade50,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: _connectionStatus!
+              ? Colors.green.shade200
+              : Colors.red.shade200,
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            _connectionStatus! ? Icons.check_circle : Icons.error,
+            color: _connectionStatus!
+                ? Colors.green.shade700
+                : Colors.red.shade700,
+            size: 20,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              _connectionStatus!
+                  ? 'Server connected - Alerts will work properly'
+                  : 'Server connection failed - Alerts may not work',
+              style: TextStyle(
+                color: _connectionStatus!
+                    ? Colors.green.shade700
+                    : Colors.red.shade700,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          TextButton(onPressed: _testConnection, child: const Text('Retry')),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -112,12 +241,51 @@ class _AlertCreationScreenState extends State<AlertCreationScreen> {
         title: const Text('Create Price Alert'),
         backgroundColor: Colors.amber.shade700,
         foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _testConnection,
+            tooltip: 'Test Server Connection',
+          ),
+        ],
       ),
       body: Form(
         key: _formKey,
         child: ListView(
           padding: const EdgeInsets.all(16.0),
           children: [
+            // Connection Status Card
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.cloud,
+                          color: theme.colorScheme.primary,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Server Status',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    _buildConnectionStatus(),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
@@ -131,7 +299,7 @@ class _AlertCreationScreenState extends State<AlertCreationScreen> {
                       ),
                     ),
                     const SizedBox(height: 20),
-                    
+
                     DropdownButtonFormField<String>(
                       value: _selectedRateType,
                       decoration: InputDecoration(
@@ -159,9 +327,9 @@ class _AlertCreationScreenState extends State<AlertCreationScreen> {
                         return null;
                       },
                     ),
-                    
+
                     const SizedBox(height: 16),
-                    
+
                     DropdownButtonFormField<String>(
                       value: _selectedCondition,
                       decoration: InputDecoration(
@@ -176,7 +344,10 @@ class _AlertCreationScreenState extends State<AlertCreationScreen> {
                           value: 'above',
                           child: Row(
                             children: [
-                              Icon(Icons.keyboard_arrow_up, color: Colors.green),
+                              Icon(
+                                Icons.keyboard_arrow_up,
+                                color: Colors.green,
+                              ),
                               SizedBox(width: 8),
                               Text('Above'),
                             ],
@@ -186,7 +357,10 @@ class _AlertCreationScreenState extends State<AlertCreationScreen> {
                           value: 'below',
                           child: Row(
                             children: [
-                              Icon(Icons.keyboard_arrow_down, color: Colors.red),
+                              Icon(
+                                Icons.keyboard_arrow_down,
+                                color: Colors.red,
+                              ),
                               SizedBox(width: 8),
                               Text('Below'),
                             ],
@@ -199,9 +373,9 @@ class _AlertCreationScreenState extends State<AlertCreationScreen> {
                         }
                       },
                     ),
-                    
+
                     const SizedBox(height: 16),
-                    
+
                     TextFormField(
                       controller: _targetValueController,
                       decoration: InputDecoration(
@@ -237,13 +411,15 @@ class _AlertCreationScreenState extends State<AlertCreationScreen> {
                         return null;
                       },
                     ),
-                    
+
                     if (currentRate != null) ...[
                       const SizedBox(height: 12),
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: theme.colorScheme.primaryContainer.withOpacity(0.3),
+                          color: theme.colorScheme.primaryContainer.withOpacity(
+                            0.3,
+                          ),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Row(
@@ -271,11 +447,13 @@ class _AlertCreationScreenState extends State<AlertCreationScreen> {
                 ),
               ),
             ),
-            
+
             const SizedBox(height: 20),
-            
+
             ElevatedButton(
-              onPressed: _isCreating ? null : _createAlert,
+              onPressed: (_isCreating || _connectionStatus != true)
+                  ? null
+                  : _createAlert,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.amber.shade700,
                 foregroundColor: Colors.white,
@@ -293,17 +471,19 @@ class _AlertCreationScreenState extends State<AlertCreationScreen> {
                         valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                       ),
                     )
-                  : const Text(
-                      'Create Alert',
-                      style: TextStyle(
+                  : Text(
+                      _connectionStatus == true
+                          ? 'Create Alert'
+                          : 'Server Connection Required',
+                      style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),

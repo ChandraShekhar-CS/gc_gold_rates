@@ -94,8 +94,8 @@ class ThemeProvider extends ChangeNotifier {
   ThemeData get darkTheme => ThemeData(
     colorScheme: ColorScheme(
       brightness: Brightness.dark,
-      primary: const Color(0xFFFFD700),
-      onPrimary: const Color(0xFF000000),
+      primary: const Color(0xFF343434),
+      onPrimary: const Color(0xFFFFFFFF),
       secondary: const Color(0xFF32D74B),
       onSecondary: const Color(0xFFFFFFFF),
       error: const Color(0xFFFF453A),

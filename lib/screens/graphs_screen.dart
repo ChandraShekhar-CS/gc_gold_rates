@@ -429,7 +429,7 @@ class _GraphsScreenState extends State<GraphsScreen> {
           xValueMapper: (_ChartData data, _) => data.x,
           yValueMapper: (_ChartData data, _) => data.y,
           name: _selectedSeries.toUpperCase(),
-          color: Theme.of(context).colorScheme.primary,
+          color: Theme.of(context).colorScheme.onSecondary,
           width: 2.5,
         ),
       ],
@@ -438,7 +438,7 @@ class _GraphsScreenState extends State<GraphsScreen> {
         enable: true,
         activationMode: ActivationMode.singleTap,
         lineType: TrackballLineType.vertical,
-        lineColor: Theme.of(context).colorScheme.primary.withOpacity(0.7),
+        lineColor: Theme.of(context).colorScheme.onSecondary.withOpacity(0.7),
         lineWidth: 2,
         markerSettings: const TrackballMarkerSettings(
           markerVisibility: TrackballVisibilityMode.visible,

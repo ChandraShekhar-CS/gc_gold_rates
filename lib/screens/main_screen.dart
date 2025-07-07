@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:async';
 import '../providers/rates_provider.dart';
 import '../widgets/rate_card.dart';
 import 'graphs_screen.dart';
@@ -14,15 +15,18 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   int _currentIndex = 0;
   late PageController _pageController;
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
+  Timer? _autoRefreshTimer;
+  static const Duration _refreshInterval = Duration(seconds: 1);
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _pageController = PageController(initialPage: _currentIndex);
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 800),
@@ -32,13 +36,47 @@ class _MainScreenState extends State<MainScreen>
       CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
     _animationController.forward();
+    _startAutoRefresh();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _stopAutoRefresh();
     _animationController.dispose();
     _pageController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.resumed) {
+      _startAutoRefresh();
+      _refreshRates();
+    } else if (state == AppLifecycleState.paused) {
+      _stopAutoRefresh();
+    }
+  }
+
+  void _startAutoRefresh() {
+    _stopAutoRefresh();
+    _autoRefreshTimer = Timer.periodic(_refreshInterval, (timer) {
+      if (_currentIndex == 0 && mounted) {
+        _refreshRates();
+      }
+    });
+  }
+
+  void _stopAutoRefresh() {
+    _autoRefreshTimer?.cancel();
+    _autoRefreshTimer = null;
+  }
+
+  void _refreshRates() {
+    if (mounted) {
+      Provider.of<RatesProvider>(context, listen: false).fetchRates();
+    }
   }
 
   void _onBottomNavTap(int index) {
@@ -50,6 +88,12 @@ class _MainScreenState extends State<MainScreen>
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOut,
     );
+
+    if (index == 0) {
+      _startAutoRefresh();
+    } else {
+      _stopAutoRefresh();
+    }
   }
 
   String _getAppBarTitle() {
@@ -76,6 +120,24 @@ class _MainScreenState extends State<MainScreen>
         foregroundColor: Theme.of(context).appBarTheme.foregroundColor,
         elevation: 0,
         automaticallyImplyLeading: false,
+        actions: _currentIndex == 0
+            ? [
+                Consumer<RatesProvider>(
+                  builder: (context, provider, child) {
+                    return IconButton(
+                      icon: provider.isLoading
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.refresh),
+                      onPressed: provider.isLoading ? null : _refreshRates,
+                    );
+                  },
+                ),
+              ]
+            : null,
       ),
       body: FadeTransition(
         opacity: _fadeAnimation,
@@ -85,6 +147,11 @@ class _MainScreenState extends State<MainScreen>
             setState(() {
               _currentIndex = index;
             });
+            if (index == 0) {
+              _startAutoRefresh();
+            } else {
+              _stopAutoRefresh();
+            }
           },
           children: [
             _buildLiveRatesPage(),
@@ -98,8 +165,10 @@ class _MainScreenState extends State<MainScreen>
         type: BottomNavigationBarType.fixed,
         currentIndex: _currentIndex,
         onTap: _onBottomNavTap,
-        selectedItemColor: Theme.of(context).colorScheme.primary,
-        unselectedItemColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+        selectedItemColor: Theme.of(context).colorScheme.onSecondary,
+        unselectedItemColor: Theme.of(
+          context,
+        ).colorScheme.onSurface.withOpacity(0.6),
         backgroundColor: Theme.of(context).colorScheme.surface,
         items: const [
           BottomNavigationBarItem(
@@ -139,7 +208,19 @@ class _MainScreenState extends State<MainScreen>
           }
 
           if (provider.errorMessage != null) {
-            return Center(child: Text('Error: ${provider.errorMessage}'));
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text('Error: ${provider.errorMessage}'),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: _refreshRates,
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            );
           }
 
           if (provider.rateCards.isEmpty) {
@@ -156,8 +237,7 @@ class _MainScreenState extends State<MainScreen>
             itemCount: provider.rateCards.length,
             itemBuilder: (context, index) {
               final card = provider.rateCards[index];
-              return RateCardWidget(
-                  key: ValueKey(card.uniqueId), card: card);
+              return RateCardWidget(key: ValueKey(card.uniqueId), card: card);
             },
             onReorder: (oldIndex, newIndex) {
               provider.reorderCards(oldIndex, newIndex);

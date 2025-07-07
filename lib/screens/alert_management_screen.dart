@@ -25,33 +25,36 @@ class _AlertManagementScreenState extends State<AlertManagementScreen> {
     await context.read<AlertProvider>().refreshAlerts();
   }
 
-  void _showDeleteConfirmation(RateAlert alert) {
+  void _confirmDelete(RateAlert alert) {
+    final colors = Theme.of(context).colorScheme;
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (ctx) => AlertDialog(
         title: const Text('Delete Alert'),
         content: Text(
-          'Are you sure you want to delete the alert for ${alert.rateDisplayName} ${alert.displayCondition.toLowerCase()} ₹${alert.targetValue.toStringAsFixed(2)}?',
+          'Delete alert for ${alert.rateDisplayName} ${alert.displayCondition.toLowerCase()} ₹${alert.targetValue.toStringAsFixed(2)}?',
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => Navigator.of(ctx).pop(),
             child: const Text('Cancel'),
           ),
           TextButton(
             onPressed: () async {
-              Navigator.of(context).pop();
-              final success = await context.read<AlertProvider>().deleteAlert(alert.id);
+              Navigator.of(ctx).pop();
+              final success = await context.read<AlertProvider>().deleteAlert(
+                alert.id,
+              );
               if (mounted && success) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Alert deleted successfully'),
-                    backgroundColor: Colors.green,
+                  SnackBar(
+                    content: const Text('Alert deleted'),
+                    backgroundColor: colors.secondary,
                   ),
                 );
               }
             },
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style: TextButton.styleFrom(foregroundColor: colors.error),
             child: const Text('Delete'),
           ),
         ],
@@ -61,74 +64,63 @@ class _AlertManagementScreenState extends State<AlertManagementScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final textTheme = theme.textTheme;
+
     return Scaffold(
       body: RefreshIndicator(
         onRefresh: _refreshAlerts,
         child: Consumer<AlertProvider>(
-          builder: (context, alertProvider, child) {
-            if (alertProvider.isLoading && alertProvider.alerts.isEmpty) {
+          builder: (ctx, provider, _) {
+            if (provider.isLoading && provider.alerts.isEmpty) {
               return const Center(child: CircularProgressIndicator());
             }
-
-            if (alertProvider.errorMessage != null) {
-              return _buildErrorView(alertProvider.errorMessage!);
+            if (provider.errorMessage != null) {
+              return _buildError(theme, provider.errorMessage!);
             }
-
-            if (alertProvider.alerts.isEmpty) {
-              return _buildEmptyView();
+            if (provider.alerts.isEmpty) {
+              return _buildEmpty(theme);
             }
-
-            return _buildAlertsList(alertProvider.alerts);
+            return _buildList(theme, provider.alerts);
           },
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => const AlertCreationScreen(),
-            ),
-          );
-        },
-        backgroundColor: Colors.amber.shade700,
-        child: const Icon(Icons.add, color: Colors.white),
+        onPressed: () => Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (_) => const AlertCreationScreen())),
+        child: const Icon(Icons.add),
       ),
     );
   }
 
-  Widget _buildErrorView(String error) {
+  Widget _buildError(ThemeData theme, String error) {
+    final colors = theme.colorScheme;
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(24.0),
+        padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.error_outline,
-              size: 60,
-              color: Colors.red.shade400,
-            ),
+            Icon(Icons.error_outline, size: 60, color: colors.error),
             const SizedBox(height: 16),
             Text(
               'Error Loading Alerts',
-              style: Theme.of(context).textTheme.headlineSmall,
+              style: theme.textTheme.headlineSmall,
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
             Text(
               error,
+              style: theme.textTheme.bodyMedium,
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium,
             ),
             const SizedBox(height: 24),
             ElevatedButton.icon(
               onPressed: _refreshAlerts,
               icon: const Icon(Icons.refresh),
               label: const Text('Retry'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.amber.shade700,
-                foregroundColor: Colors.white,
-              ),
             ),
           ],
         ),
@@ -136,52 +128,41 @@ class _AlertManagementScreenState extends State<AlertManagementScreen> {
     );
   }
 
-  Widget _buildEmptyView() {
+  Widget _buildEmpty(ThemeData theme) {
+    final colors = theme.colorScheme;
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(24.0),
+        padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
               Icons.notifications_none,
-              size: 100,
-              color: Colors.grey.shade400,
+              size: 80,
+              color: colors.onSurfaceVariant,
             ),
             const SizedBox(height: 24),
             Text(
               'No Price Alerts',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                color: Colors.grey.shade600,
+              style: theme.textTheme.headlineSmall?.copyWith(
+                color: colors.onSurfaceVariant,
               ),
             ),
             const SizedBox(height: 12),
             Text(
-              'Create your first alert to get notified when prices reach your target levels.',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Colors.grey.shade600,
+              'Create your first alert to get notified when prices reach your targets.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: colors.onSurfaceVariant,
               ),
+              textAlign: TextAlign.center,
             ),
             const SizedBox(height: 32),
             ElevatedButton.icon(
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => const AlertCreationScreen(),
-                  ),
-                );
-              },
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const AlertCreationScreen()),
+              ),
               icon: const Icon(Icons.add),
               label: const Text('Create Alert'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.amber.shade700,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 12,
-                ),
-              ),
             ),
           ],
         ),
@@ -189,52 +170,51 @@ class _AlertManagementScreenState extends State<AlertManagementScreen> {
     );
   }
 
-  Widget _buildAlertsList(List<RateAlert> alerts) {
-    final activeAlerts = alerts.where((alert) => alert.isActive).toList();
-    final inactiveAlerts = alerts.where((alert) => !alert.isActive).toList();
-
+  Widget _buildList(ThemeData theme, List<RateAlert> alerts) {
+    final colors = theme.colorScheme;
+    final active = alerts.where((a) => a.isActive).toList();
+    final inactive = alerts.where((a) => !a.isActive).toList();
     return ListView(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.all(16),
       children: [
-        if (activeAlerts.isNotEmpty) ...[
-          _buildSectionHeader('Active Alerts', activeAlerts.length),
+        if (active.isNotEmpty) ...[
+          _section(theme, 'Active Alerts', active.length),
           const SizedBox(height: 8),
-          ...activeAlerts.map((alert) => _buildAlertCard(alert)),
+          ...active.map((a) => _card(theme, a)),
           const SizedBox(height: 24),
         ],
-        
-        if (inactiveAlerts.isNotEmpty) ...[
-          _buildSectionHeader('Inactive Alerts', inactiveAlerts.length),
+        if (inactive.isNotEmpty) ...[
+          _section(theme, 'Inactive Alerts', inactive.length),
           const SizedBox(height: 8),
-          ...inactiveAlerts.map((alert) => _buildAlertCard(alert)),
+          ...inactive.map((a) => _card(theme, a)),
         ],
       ],
     );
   }
 
-  Widget _buildSectionHeader(String title, int count) {
+  Widget _section(ThemeData theme, String title, int count) {
+    final colors = theme.colorScheme;
     return Row(
       children: [
         Text(
           title,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+          style: theme.textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.bold,
-            color: Colors.grey.shade700,
+            color: colors.onSurface,
           ),
         ),
         const SizedBox(width: 8),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
-            color: Colors.amber.shade100,
+            color: colors.secondaryContainer,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Text(
-            count.toString(),
-            style: TextStyle(
-              fontSize: 12,
+            '$count',
+            style: theme.textTheme.bodySmall?.copyWith(
               fontWeight: FontWeight.bold,
-              color: Colors.amber.shade800,
+              color: colors.onSecondaryContainer,
             ),
           ),
         ),
@@ -242,29 +222,26 @@ class _AlertManagementScreenState extends State<AlertManagementScreen> {
     );
   }
 
-  Widget _buildAlertCard(RateAlert alert) {
-    final currencyFormatter = NumberFormat.currency(
+  Widget _card(ThemeData theme, RateAlert alert) {
+    final colors = theme.colorScheme;
+    final fmt = NumberFormat.currency(
       locale: 'en_IN',
       symbol: '₹ ',
       decimalDigits: 2,
     );
-
-    final dateFormatter = DateFormat('dd MMM yyyy, hh:mm a');
-
+    final df = DateFormat('dd MMM yyyy, hh:mm a');
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       elevation: alert.isActive ? 2 : 1,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(
-          color: alert.isActive 
-              ? Colors.amber.shade200 
-              : Colors.grey.shade300,
+          color: alert.isActive ? colors.primaryContainer : colors.outline,
           width: 1,
         ),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -276,7 +253,7 @@ class _AlertManagementScreenState extends State<AlertManagementScreen> {
                     children: [
                       Text(
                         alert.rateDisplayName,
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -284,22 +261,22 @@ class _AlertManagementScreenState extends State<AlertManagementScreen> {
                       Row(
                         children: [
                           Icon(
-                            alert.conditionType == 'above' 
-                                ? Icons.keyboard_arrow_up 
+                            alert.conditionType == 'above'
+                                ? Icons.keyboard_arrow_up
                                 : Icons.keyboard_arrow_down,
-                            color: alert.conditionType == 'above' 
-                                ? Colors.green 
-                                : Colors.red,
+                            color: alert.conditionType == 'above'
+                                ? colors.secondary
+                                : colors.error,
                             size: 20,
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            '${alert.displayCondition} ${currencyFormatter.format(alert.targetValue)}',
-                            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                            '${alert.displayCondition} ${fmt.format(alert.targetValue)}',
+                            style: theme.textTheme.bodyLarge?.copyWith(
                               fontWeight: FontWeight.w600,
-                              color: alert.conditionType == 'above' 
-                                  ? Colors.green.shade700 
-                                  : Colors.red.shade700,
+                              color: alert.conditionType == 'above'
+                                  ? colors.secondary
+                                  : colors.error,
                             ),
                           ),
                         ],
@@ -307,29 +284,28 @@ class _AlertManagementScreenState extends State<AlertManagementScreen> {
                     ],
                   ),
                 ),
-                
                 Switch(
                   value: alert.isActive,
-                  onChanged: (value) async {
-                    final success = await context.read<AlertProvider>().toggleAlert(alert.id);
-                    if (!success && mounted) {
+                  onChanged: (val) async {
+                    final ok = await context.read<AlertProvider>().toggleAlert(
+                      alert.id,
+                    );
+                    if (!ok && mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text(
-                            context.read<AlertProvider>().errorMessage ?? 'Failed to update alert',
+                            context.read<AlertProvider>().errorMessage ??
+                                'Update failed',
                           ),
-                          backgroundColor: Colors.red,
+                          backgroundColor: colors.error,
                         ),
                       );
                     }
                   },
-                  activeColor: Colors.amber.shade700,
                 ),
               ],
             ),
-            
             const SizedBox(height: 12),
-            
             Row(
               children: [
                 Expanded(
@@ -337,17 +313,17 @@ class _AlertManagementScreenState extends State<AlertManagementScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Created: ${dateFormatter.format(alert.createdAt)}',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.grey.shade600,
+                        'Created: ${df.format(alert.createdAt)}',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colors.onSurfaceVariant,
                         ),
                       ),
                       if (alert.triggeredAt != null) ...[
                         const SizedBox(height: 2),
                         Text(
-                          'Triggered: ${dateFormatter.format(alert.triggeredAt!)}',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Colors.orange.shade600,
+                          'Triggered: ${df.format(alert.triggeredAt!)}',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: colors.secondary,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -355,12 +331,10 @@ class _AlertManagementScreenState extends State<AlertManagementScreen> {
                     ],
                   ),
                 ),
-                
                 IconButton(
-                  onPressed: () => _showDeleteConfirmation(alert),
+                  onPressed: () => _confirmDelete(alert),
                   icon: const Icon(Icons.delete_outline),
-                  color: Colors.red.shade600,
-                  tooltip: 'Delete Alert',
+                  color: colors.error,
                 ),
               ],
             ),
