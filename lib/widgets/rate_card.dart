@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/rate_card.dart' as model;
-import '../screens/graphs_screen.dart';
+import '../screens/main_screen.dart';
 
 class RateCardWidget extends StatelessWidget {
   final model.RateCard card;
@@ -48,11 +48,10 @@ class RateCardWidget extends StatelessWidget {
       ),
       child: InkWell(
         onTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => GraphsScreen(initialSeriesSymbol: card.apiSymbol),
-            ),
-          );
+          final mainState = context.findAncestorStateOfType<MainScreenState>();
+          if (mainState != null) {
+            mainState.switchToChartsTab(card.apiSymbol);
+          }
         },
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,

@@ -11,12 +11,13 @@ class MainScreen extends StatefulWidget {
   const MainScreen({Key? key}) : super(key: key);
 
   @override
-  State<MainScreen> createState() => _MainScreenState();
+  MainScreenState createState() => MainScreenState();
 }
 
-class _MainScreenState extends State<MainScreen>
+class MainScreenState extends State<MainScreen>
     with TickerProviderStateMixin, WidgetsBindingObserver {
   int _currentIndex = 0;
+  String _chartSeries = 'gold';
   late PageController _pageController;
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
@@ -72,6 +73,20 @@ class _MainScreenState extends State<MainScreen>
 
   void _refreshRates() {
     if (mounted) context.read<RatesProvider>().fetchRates();
+  }
+
+  /// Switch to Charts tab *and* set which series it should display.
+  void switchToChartsTab(String series) {
+    setState(() {
+      _chartSeries = series;
+      _currentIndex = 1;
+    });
+    _pageController.animateToPage(
+      1,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
+    _stopAutoRefresh();
   }
 
   void _onBottomNavTap(int index) {
@@ -147,11 +162,12 @@ class _MainScreenState extends State<MainScreen>
             else
               _stopAutoRefresh();
           },
-          children: const [
-            _LiveRatesPage(),
-            GraphsScreen(),
-            AlertManagementScreen(),
-            SettingsScreen(),
+          children: [
+            const _LiveRatesPage(),
+            // pass our mutable chart symbol here
+            GraphsScreen(initialSeriesSymbol: _chartSeries),
+            const AlertManagementScreen(),
+            const SettingsScreen(),
           ],
         ),
       ),

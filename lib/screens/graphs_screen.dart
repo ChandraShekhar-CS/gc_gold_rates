@@ -78,6 +78,16 @@ class _GraphsScreenState extends State<GraphsScreen> {
   }
 
   @override
+  void didUpdateWidget(covariant GraphsScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialSeriesSymbol != null &&
+        widget.initialSeriesSymbol != oldWidget.initialSeriesSymbol) {
+      _selectedSeries = widget.initialSeriesSymbol!;
+      _fetchData();
+    }
+  }
+
+  @override
   void dispose() {
     _disposed = true;
     super.dispose();
@@ -344,16 +354,8 @@ class _GraphsScreenState extends State<GraphsScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceAround,
       children: [
-        _buildStatPill(
-          'Lowest',
-          formatter.format(price.low),
-          Colors.red,
-        ),
-        _buildStatPill(
-          'Highest',
-          formatter.format(price.high),
-          Colors.green,
-        ),
+        _buildStatPill('Lowest', formatter.format(price.low), Colors.red),
+        _buildStatPill('Highest', formatter.format(price.high), Colors.green),
       ],
     );
   }

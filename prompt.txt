@@ -1500,6 +1500,14 @@ class _AlertManagementScreenState extends State<AlertManagementScreen> {
                 ),
                 Switch(
                   value: alert.isActive,
+                  activeColor: colors.primary, // thumb color when ON
+                  activeTrackColor:
+                      colors.primaryContainer, // track color when ON
+                  inactiveThumbColor:
+                      colors.onSurfaceVariant, // thumb color when OFF
+                  inactiveTrackColor: colors.onSurfaceVariant.withOpacity(
+                    0.3,
+                  ), // track color when OFF
                   onChanged: (val) async {
                     final ok = await context.read<AlertProvider>().toggleAlert(
                       alert.id,
@@ -1639,6 +1647,16 @@ class _GraphsScreenState extends State<GraphsScreen> {
         _fetchData();
       }
     });
+  }
+
+  @override
+  void didUpdateWidget(covariant GraphsScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialSeriesSymbol != null &&
+        widget.initialSeriesSymbol != oldWidget.initialSeriesSymbol) {
+      _selectedSeries = widget.initialSeriesSymbol!;
+      _fetchData();
+    }
   }
 
   @override
@@ -1908,16 +1926,8 @@ class _GraphsScreenState extends State<GraphsScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceAround,
       children: [
-        _buildStatPill(
-          'Lowest',
-          formatter.format(price.low),
-          Theme.of(context).colorScheme.error,
-        ),
-        _buildStatPill(
-          'Highest',
-          formatter.format(price.high),
-          Theme.of(context).colorScheme.secondary,
-        ),
+        _buildStatPill('Lowest', formatter.format(price.low), Colors.red),
+        _buildStatPill('Highest', formatter.format(price.high), Colors.green),
       ],
     );
   }
@@ -2341,12 +2351,13 @@ class MainScreen extends StatefulWidget {
   const MainScreen({Key? key}) : super(key: key);
 
   @override
-  State<MainScreen> createState() => _MainScreenState();
+  MainScreenState createState() => MainScreenState();
 }
 
-class _MainScreenState extends State<MainScreen>
+class MainScreenState extends State<MainScreen>
     with TickerProviderStateMixin, WidgetsBindingObserver {
   int _currentIndex = 0;
+  String _chartSeries = 'gold';
   late PageController _pageController;
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
@@ -2402,6 +2413,20 @@ class _MainScreenState extends State<MainScreen>
 
   void _refreshRates() {
     if (mounted) context.read<RatesProvider>().fetchRates();
+  }
+
+  /// Switch to Charts tab *and* set which series it should display.
+  void switchToChartsTab(String series) {
+    setState(() {
+      _chartSeries = series;
+      _currentIndex = 1;
+    });
+    _pageController.animateToPage(
+      1,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
+    _stopAutoRefresh();
   }
 
   void _onBottomNavTap(int index) {
@@ -2477,11 +2502,12 @@ class _MainScreenState extends State<MainScreen>
             else
               _stopAutoRefresh();
           },
-          children: const [
-            _LiveRatesPage(),
-            GraphsScreen(),
-            AlertManagementScreen(),
-            SettingsScreen(),
+          children: [
+            const _LiveRatesPage(),
+            // pass our mutable chart symbol here
+            GraphsScreen(initialSeriesSymbol: _chartSeries),
+            const AlertManagementScreen(),
+            const SettingsScreen(),
           ],
         ),
       ),
@@ -3383,7 +3409,7 @@ Content:
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/rate_card.dart' as model;
-import '../screens/graphs_screen.dart';
+import '../screens/main_screen.dart';
 
 class RateCardWidget extends StatelessWidget {
   final model.RateCard card;
@@ -3430,11 +3456,10 @@ class RateCardWidget extends StatelessWidget {
       ),
       child: InkWell(
         onTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => GraphsScreen(initialSeriesSymbol: card.apiSymbol),
-            ),
-          );
+          final mainState = context.findAncestorStateOfType<MainScreenState>();
+          if (mainState != null) {
+            mainState.switchToChartsTab(card.apiSymbol);
+          }
         },
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
