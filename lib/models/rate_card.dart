@@ -4,8 +4,10 @@ class RateCard {
   final String apiSymbol;
   String buyRate = "0.0";
   String sellRate = "0.0";
-  String high = "0.0";
-  String low = "0.0";
+  String buyHigh = "0.0";
+  String buyLow = "0.0";
+  String sellHigh = "0.0";
+  String sellLow = "0.0";
   String previousBuyRate = "0.0";
   String previousSellRate = "0.0";
   RateCard({

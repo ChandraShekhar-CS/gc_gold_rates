@@ -122,21 +122,38 @@ class RatesProvider with ChangeNotifier {
               if (rateInfo is Map<String, dynamic>) {
                 card.buyRate = rateInfo['buy']?.toString() ?? "0.0";
                 card.sellRate = rateInfo['sell']?.toString() ?? "0.0";
-                card.high = rateInfo['high']?.toString() ?? "0.0";
-                card.low = rateInfo['low']?.toString() ?? "0.0";
+                
+                if (rateInfo['high'] is Map<String, dynamic>) {
+                  final highData = rateInfo['high'] as Map<String, dynamic>;
+                  card.buyHigh = highData['buy']?.toString() ?? "0.0";
+                  card.sellHigh = highData['sell']?.toString() ?? "0.0";
+                } else {
+                  card.buyHigh = rateInfo['high']?.toString() ?? "0.0";
+                  card.sellHigh = rateInfo['high']?.toString() ?? "0.0";
+                }
+                
+                if (rateInfo['low'] is Map<String, dynamic>) {
+                  final lowData = rateInfo['low'] as Map<String, dynamic>;
+                  card.buyLow = lowData['buy']?.toString() ?? "0.0";
+                  card.sellLow = lowData['sell']?.toString() ?? "0.0";
+                } else {
+                  card.buyLow = rateInfo['low']?.toString() ?? "0.0";
+                  card.sellLow = rateInfo['low']?.toString() ?? "0.0";
+                }
               } else {
                 final rateValue = rateInfo.toString();
                 card.buyRate = rateValue;
                 card.sellRate = rateValue;
-                card.high = rateValue;
-                card.low = rateValue;
+                card.buyHigh = rateValue;
+                card.sellHigh = rateValue;
+                card.buyLow = rateValue;
+                card.sellLow = rateValue;
               }
             }
           }
         }
         errorMessage = null;
 
-        // Update home widget with gold and silver data
         final goldCard = rateCards
             .where((card) => card.apiSymbol == 'gold')
             .firstOrNull;
@@ -168,7 +185,6 @@ class RatesProvider with ChangeNotifier {
     if (_disposed) return;
 
     _timer?.cancel();
-    // Reduced frequency from 1 second to 30 seconds for better performance
     _timer = Timer.periodic(const Duration(seconds: 30), (timer) {
       if (!_disposed) {
         fetchRates();

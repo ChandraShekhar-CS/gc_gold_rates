@@ -48,6 +48,7 @@ class ThemeProvider extends ChangeNotifier {
   ThemeData get lightTheme => ThemeData(
     colorScheme: ColorScheme.fromSeed(
       seedColor: Colors.amber,
+      secondary: Colors.green,
       brightness: Brightness.light,
     ),
     useMaterial3: true,

@@ -19,15 +19,17 @@ class RateCardWidget extends StatelessWidget {
     final theme = Theme.of(context);
     final textTheme = theme.textTheme;
     final colors = theme.colorScheme;
+
     final isDark = theme.brightness == Brightness.dark;
 
-    // Parse rates
     final currentBuy = double.tryParse(card.buyRate) ?? 0;
     final prevBuy = double.tryParse(card.previousBuyRate) ?? 0;
     final buyChange = currentBuy - prevBuy;
     final buyColor = buyChange == 0
         ? colors.onSurfaceVariant
-        : (buyChange > 0 ? colors.secondary : colors.error);
+        : (buyChange > 0
+              ? colors.secondary
+              : colors.error);
     final buyIcon = buyChange == 0
         ? Icons.remove
         : (buyChange > 0 ? Icons.arrow_upward : Icons.arrow_downward);
@@ -37,7 +39,9 @@ class RateCardWidget extends StatelessWidget {
     final sellChange = currentSell - prevSell;
     final sellColor = sellChange == 0
         ? colors.onSurfaceVariant
-        : (sellChange > 0 ? colors.secondary : colors.error);
+        : (sellChange > 0
+              ? colors.secondary
+              : colors.error);
     final sellIcon = sellChange == 0
         ? Icons.remove
         : (sellChange > 0 ? Icons.arrow_upward : Icons.arrow_downward);
@@ -83,10 +87,12 @@ class RateCardWidget extends StatelessWidget {
                       change: buyChange,
                       color: buyColor,
                       icon: buyIcon,
+                      high: double.tryParse(card.buyHigh) ?? 0,
+                      low: double.tryParse(card.buyLow) ?? 0,
                       currencyFormatter: currencyFormatter,
                       changeFormatter: changeFormatter,
                       textTheme: textTheme,
-                      onSurfaceVariant: colors.onSurfaceVariant,
+                      colors: colors,
                     ),
                   ),
                   VerticalDivider(
@@ -101,36 +107,13 @@ class RateCardWidget extends StatelessWidget {
                       change: sellChange,
                       color: sellColor,
                       icon: sellIcon,
+                      high: double.tryParse(card.sellHigh) ?? 0,
+                      low: double.tryParse(card.sellLow) ?? 0,
                       currencyFormatter: currencyFormatter,
                       changeFormatter: changeFormatter,
                       textTheme: textTheme,
-                      onSurfaceVariant: colors.onSurfaceVariant,
+                      colors: colors,
                     ),
-                  ),
-                ],
-              ),
-            ),
-            Divider(color: colors.outline, height: 1, thickness: 1),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  _buildHighLow(
-                    label: 'Low',
-                    value: double.tryParse(card.low) ?? 0,
-                    formatter: currencyFormatter,
-                    textTheme: textTheme,
-                    color: colors.error,
-                    onSurfaceVariant: colors.onSurfaceVariant,
-                  ),
-                  _buildHighLow(
-                    label: 'High',
-                    value: double.tryParse(card.high) ?? 0,
-                    formatter: currencyFormatter,
-                    textTheme: textTheme,
-                    color: colors.secondary,
-                    onSurfaceVariant: colors.onSurfaceVariant,
                   ),
                 ],
               ),
@@ -147,19 +130,24 @@ class RateCardWidget extends StatelessWidget {
     required double change,
     required Color color,
     required IconData icon,
+    required double high,
+    required double low,
     required NumberFormat currencyFormatter,
     required NumberFormat changeFormatter,
     required TextTheme textTheme,
-    required Color onSurfaceVariant,
+    required ColorScheme colors,
   }) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 16),
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
             label,
-            style: textTheme.bodyMedium?.copyWith(color: onSurfaceVariant),
+            style: textTheme.bodyMedium?.copyWith(
+              color: colors.onSurfaceVariant,
+              fontWeight: FontWeight.w500,
+            ),
           ),
           const SizedBox(height: 8),
           Text(
@@ -168,6 +156,7 @@ class RateCardWidget extends StatelessWidget {
               fontWeight: FontWeight.bold,
               color: color,
             ),
+            textAlign: TextAlign.center,
           ),
           const SizedBox(height: 4),
           Row(
@@ -184,6 +173,24 @@ class RateCardWidget extends StatelessWidget {
               ),
             ],
           ),
+          const SizedBox(height: 12),
+          _buildHighLow(
+            label: 'High',
+            value: high,
+            formatter: currencyFormatter,
+            textTheme: textTheme,
+            color: colors.secondary,
+            onSurfaceVariant: colors.onSurfaceVariant,
+          ),
+          const SizedBox(height: 4),
+          _buildHighLow(
+            label: 'Low',
+            value: low,
+            formatter: currencyFormatter,
+            textTheme: textTheme,
+            color: colors.error,
+            onSurfaceVariant: colors.onSurfaceVariant,
+          ),
         ],
       ),
     );
@@ -198,13 +205,14 @@ class RateCardWidget extends StatelessWidget {
     required Color onSurfaceVariant,
   }) {
     return RichText(
+      textAlign: TextAlign.center,
       text: TextSpan(
-        style: textTheme.bodyMedium?.copyWith(color: onSurfaceVariant),
+        style: textTheme.bodySmall?.copyWith(color: onSurfaceVariant),
         children: [
           TextSpan(text: '$label: '),
           TextSpan(
             text: formatter.format(value),
-            style: textTheme.bodyMedium?.copyWith(
+            style: textTheme.bodySmall?.copyWith(
               fontWeight: FontWeight.w600,
               color: color,
             ),
